@@ -36,22 +36,37 @@ dependencies = [
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
 """,
-    ".env": "APP_NAME={{APP_NAME}}\n",
+    ".env": """\
+APP_NAME={{APP_NAME}}
+DEBUG=false
+""",
     "app/__init__.py": "",
     "app/application.py": """\
-from nexus.interfaces import ApplicationInterface, ContainerInterface, EnvironmentInterface
+from nexus.interfaces import ApplicationInterface, ContainerInterface
+
+from app.config.environment import Environment
+from app.services.greeter_interface import GreeterInterface
 
 
 class Application(ApplicationInterface):
-    def __init__(self, environment: EnvironmentInterface, container: ContainerInterface) -> None:
+    def __init__(self, environment: Environment, container: ContainerInterface) -> None:
         self._env = environment
-        self._container = container
+        self._greeter = container.get(GreeterInterface)
 
     def run(self) -> None:
-        print(f"Running {self._env.APP_NAME}")
+        print(f"[{self._env.APP_NAME}] debug={self._env.DEBUG}")
+        print(self._greeter.greet("world"))
 """,
     "app/config/__init__.py": "",
-    "app/config/di.py": "DI_CONFIG = {}\n",
+    "app/config/di.py": """\
+# Register your services here: {Interface: Implementation}
+from app.services.greeter import Greeter
+from app.services.greeter_interface import GreeterInterface
+
+DI_CONFIG = {
+    GreeterInterface: Greeter,
+}
+""",
     "app/config/environment.py": """\
 from pathlib import Path
 
@@ -62,10 +77,32 @@ from nexus.interfaces import EnvironmentInterface
 
 @singleton
 class Environment(EnvironmentInterface):
+    # Add your config fields here — they are read from .env automatically
     APP_NAME: str = "{{APP_NAME}}"
+    DEBUG: bool = False
 
     def __init__(self, env_path: Path) -> None:
         super().__init__(_env_file=env_path)
+""",
+    "app/services/__init__.py": "",
+    "app/services/greeter_interface.py": """\
+from abc import ABC, abstractmethod
+
+
+class GreeterInterface(ABC):
+    @abstractmethod
+    def greet(self, name: str) -> str: ...
+""",
+    "app/services/greeter.py": """\
+from injector import singleton
+
+from app.services.greeter_interface import GreeterInterface
+
+
+@singleton
+class Greeter(GreeterInterface):
+    def greet(self, name: str) -> str:
+        return f"Hello, {name}!"
 """,
 }
 

@@ -30,15 +30,34 @@ python main.py
 
 ```
 my-app/
-├── main.py                    # entry point
+├── main.py                          # entry point
 ├── pyproject.toml
 ├── .env
 └── app/
-    ├── application.py         # extend ApplicationInterface
-    └── config/
-        ├── di.py              # DI_CONFIG = {Interface: Implementation}
-        └── environment.py     # extend EnvironmentInterface
+    ├── application.py               # extend ApplicationInterface
+    ├── config/
+    │   ├── di.py                    # DI_CONFIG = {Interface: Implementation}
+    │   └── environment.py           # extend EnvironmentInterface
+    └── services/
+        ├── greeter_interface.py     # example interface
+        └── greeter.py               # example implementation
 ```
+
+## How it fits together
+
+```python
+# main.py — the whole bootstrap
+env       = Environment(Root.external(".env"))  # 1. load typed config
+container = ContainerInjector(DI_CONFIG)         # 2. wire up services
+container.set(Environment, env)                  # 3. make config injectable
+Application(env, container).run()                # 4. start the app
+```
+
+| File | Role |
+|------|------|
+| `app/config/environment.py` | Declare config fields — read from `.env` automatically |
+| `app/config/di.py` | Register services — `{Interface: Implementation}` |
+| `app/application.py` | Entry point — resolve services, own the `run()` lifecycle |
 
 ## Environment
 
