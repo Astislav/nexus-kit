@@ -5,7 +5,11 @@ Minimal Python application framework. Single entry point, typed config, dependen
 ## Install
 
 ```bash
-uv add "nexus[full] @ git+https://github.com/astislav/nexus"
+# uv
+uv add "nexus[full] @ git+https://github.com/Astislav/nexus"
+
+# pip
+pip install "nexus[full] @ git+https://github.com/Astislav/nexus"
 ```
 
 ## Bootstrap a new app
@@ -13,8 +17,12 @@ uv add "nexus[full] @ git+https://github.com/astislav/nexus"
 ```bash
 nexus new my-app
 cd my-app
-uv sync
-uv run python main.py
+
+# install dependencies:
+uv sync          # uv
+pip install -e . # pip
+
+python main.py
 # → Running my-app
 ```
 

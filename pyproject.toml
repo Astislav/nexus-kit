@@ -29,7 +29,7 @@ pydantic = ["pydantic-settings>=2.13.1"]
 full     = ["injector>=0.24.0", "pydantic-settings>=2.13.1"]
 
 [project.urls]
-Repository = "https://github.com/astislav/nexus"
+Repository = "https://github.com/Astislav/nexus"
 
 [project.scripts]
 nexus = "nexus.cli:main"

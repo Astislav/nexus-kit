@@ -29,7 +29,7 @@ name = "{{APP_NAME}}"
 version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
-    "nexus[full] @ git+https://github.com/astislav/nexus",
+    "nexus[full] @ git+https://github.com/Astislav/nexus",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -89,6 +89,11 @@ def main() -> None:
         path.write_text(content.replace("{{APP_NAME}}", app_name), encoding="utf-8")
 
     print(f"Created {app_name}/")
+    print(f"")
     print(f"  cd {app_name}")
-    print(f"  uv sync")
-    print(f"  uv run python main.py")
+    print(f"")
+    print(f"  # install dependencies:")
+    print(f"  uv sync                  # uv")
+    print(f"  pip install -e .         # pip")
+    print(f"")
+    print(f"  python main.py")
