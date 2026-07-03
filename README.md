@@ -128,6 +128,76 @@ html   = Root.internal("templates", "report.html")
 Use `external` for anything the user owns (configs, databases, output files).
 Use `internal` for assets you ship inside the bundle (templates, images, default configs).
 
+## Logging
+
+`NamedLogger` is a base for typed, DI-injectable logger channels — subclass
+it, set `name`, and inject the subclass by type. No string-keyed
+`logging.getLogger(...)` calls scattered through the codebase:
+
+```python
+# app/loggers.py
+from injector import singleton
+from nexus.logging import NamedLogger
+
+@singleton
+class SessionLogger(NamedLogger):
+    name = "app.session"
+
+@singleton
+class SenderLogger(NamedLogger):
+    name = "app.sender"
+```
+
+```python
+# app/core/session_manager.py
+from injector import inject, singleton
+from app.loggers import SessionLogger
+
+@singleton
+class SessionManager:
+    @inject
+    def __init__(self, log: SessionLogger) -> None:
+        self._log = log
+
+    def start(self) -> None:
+        self._log.info("Session manager started")
+```
+
+Each subclass gets its own `StdoutHandler` (console, one shared instance)
+wired up automatically — no duplicate-handler bugs, no manual `addHandler`.
+
+**Custom format** — subclass `StdoutHandler` and rebind it:
+
+```python
+# app/loggers.py
+from nexus.logging import StdoutHandler
+
+class JsonStdoutHandler(StdoutHandler):
+    format_string = '{"ts":"%(asctime)s","level":"%(levelname)s","logger":"%(name)s","msg":"%(message)s"}'
+```
+
+```python
+# app/config/di.py
+DI_CONFIG = {
+    StdoutHandler: JsonStdoutHandler,
+    ...
+}
+```
+
+**Extra handlers** (e.g. forwarding logs to a UI widget) — override `__init__`
+and add the handler after calling `super().__init__(handler)`:
+
+```python
+@singleton
+class SessionLogger(NamedLogger):
+    name = "app.session"
+
+    @inject
+    def __init__(self, handler: StdoutHandler, ui_handler: LogViewHandler) -> None:
+        super().__init__(handler)
+        self.addHandler(ui_handler)
+```
+
 ## Add a service
 
 **1. Define an interface:**
@@ -193,6 +263,8 @@ class Application(ApplicationInterface):
 | `EnvironmentInterface` | `nexus.interfaces` | Typed config base (Pydantic BaseSettings) |
 | `Root` | `nexus` | Path util for dev and PyInstaller-bundled environments |
 | `ContainerInjector` | `nexus.impl` | `ContainerInterface` impl via [injector](https://injector.readthedocs.io/) |
+| `NamedLogger` | `nexus.logging` | Base for typed, DI-injectable logger channels |
+| `StdoutHandler` | `nexus.logging` | Shared console handler; subclass to customize the format |
 
 ## What nexus does NOT provide
 
@@ -202,7 +274,7 @@ Domain logic, UI, data access — those belong in your app.
 
 | Extra | What it unlocks |
 |-------|-----------------|
-| `nexus[injector]` | `ContainerInjector` |
+| `nexus[injector]` | `ContainerInjector`, `nexus.logging` (`NamedLogger`, `StdoutHandler`) |
 | `nexus[pydantic]` | `EnvironmentInterface` |
 | `nexus[full]` | Both — recommended |
 
