@@ -2,7 +2,7 @@ from typing import Any, Mapping, Type, TypeVar
 
 from injector import Injector, singleton
 
-from nexus.interfaces.container import ContainerInterface
+from nexus_kit.interfaces.container import ContainerInterface
 
 
 @singleton

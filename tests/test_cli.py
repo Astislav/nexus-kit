@@ -5,7 +5,7 @@ import sys
 
 import pytest
 
-from nexus import cli
+from nexus_kit import cli
 
 
 def scaffold(tmp_path, monkeypatch, name="probe"):

@@ -10,8 +10,8 @@ import faulthandler
 from app.application import Application
 from app.config.di import DI_CONFIG
 from app.config.environment import Environment
-from nexus import Root
-from nexus.impl import ContainerInjector
+from nexus_kit import Root
+from nexus_kit.impl import ContainerInjector
 
 if __name__ == "__main__":
     faulthandler.enable(all_threads=True)
@@ -58,8 +58,8 @@ RUN_SECONDS=3
     "app/application.py": """\
 import time
 
-from nexus.impl import ServiceRunner
-from nexus.interfaces import ApplicationInterface, ContainerInterface
+from nexus_kit.impl import ServiceRunner
+from nexus_kit.interfaces import ApplicationInterface, ContainerInterface
 
 from app.config.environment import Environment
 from app.services.ticker import Ticker
@@ -97,7 +97,7 @@ from pathlib import Path
 
 from injector import singleton
 
-from nexus.interfaces import EnvironmentInterface
+from nexus_kit.interfaces import EnvironmentInterface
 
 
 @singleton
@@ -116,7 +116,7 @@ import threading
 
 from injector import inject, singleton
 
-from nexus.interfaces import ServiceInterface
+from nexus_kit.interfaces import ServiceInterface
 
 from app.config.environment import Environment
 from app.services.reporter_interface import ReporterInterface
@@ -178,39 +178,39 @@ class ConsoleReporter(ReporterInterface):
 Guidance for Claude Code (and other AI assistants) working in this repository.
 
 This app is built on the **nexus** framework. Its API, the bootstrap pattern and the
-gotchas are in `.ai/nexus.md` — read it before touching DI, config or the composition
+gotchas are in `.ai/nexus-kit.md` — read it before touching DI, config or the composition
 root (`app/config/di.py`). Keep this file thin: put engineering discipline in `.ai/`
 and only repo-specific facts here.
 """,
-    ".ai/nexus.md": """\
+    ".ai/nexus-kit.md": """\
 # Nexus — quick reference (how to build an app on this framework)
 
 Compact cheat-sheet for the **nexus** framework (PyPI dist `nexus-kit`, imports as
 `nexus`; github.com/Astislav/nexus), pinned to **~={{NEXUS_REF}}**. For depth: the
 framework's own `.ai/guide.md`, or the installed source at
-`.venv/Lib/site-packages/nexus/`.
+`.venv/Lib/site-packages/nexus_kit/`.
 
 ## What it is
 
 A tiny application bootstrap: a **DI container** (wraps `injector`) + a **config base**
-(wraps `pydantic-settings`) + **logging** + **`Root`** (paths) + the `nexus new` CLI.
+(wraps `pydantic-settings`) + **logging** + **`Root`** (paths) + the `nexus-kit new` CLI.
 No domain, HTTP or DB.
 
 ## Public API
 
 | Symbol | Import | Role |
 |---|---|---|
-| `ApplicationInterface` | `nexus.interfaces` | run contract: `__init__(env, container)` + `run()` |
-| `ContainerInterface` | `nexus.interfaces` | DI contract: `get(cls)`, `set(cls, value)` |
-| `EnvironmentInterface` | `nexus.interfaces` | typed config base (pydantic BaseSettings + `@singleton`) |
-| `ServiceInterface` | `nexus.interfaces` | long-lived service: `start()`/`stop()` (sync or async, `stop()` idempotent) |
+| `ApplicationInterface` | `nexus_kit.interfaces` | run contract: `__init__(env, container)` + `run()` |
+| `ContainerInterface` | `nexus_kit.interfaces` | DI contract: `get(cls)`, `set(cls, value)` |
+| `EnvironmentInterface` | `nexus_kit.interfaces` | typed config base (pydantic BaseSettings + `@singleton`) |
+| `ServiceInterface` | `nexus_kit.interfaces` | long-lived service: `start()`/`stop()` (sync or async, `stop()` idempotent) |
 | `Root` | `nexus` | paths: `Root.internal(*p)` (bundled assets) / `Root.external(*p)` (files next to the exe — or next to `main.py` in dev: `.env`, db) |
-| `ContainerInjector` | `nexus.impl` | concrete container; constructor takes `DI_CONFIG: dict[Type, Impl]` |
-| `ServiceRunner` | `nexus.impl` | ordered start / guaranteed reverse-order stop: `with`/`async with ServiceRunner(container, SERVICES)` around the app body |
-| `NamedLogger` / `StdoutHandler` / `LogFormatter` | `nexus.logging` | DI-injectable logging |
+| `ContainerInjector` | `nexus_kit.impl` | concrete container; constructor takes `DI_CONFIG: dict[Type, Impl]` |
+| `ServiceRunner` | `nexus_kit.impl` | ordered start / guaranteed reverse-order stop: `with`/`async with ServiceRunner(container, SERVICES)` around the app body |
+| `NamedLogger` / `StdoutHandler` / `LogFormatter` | `nexus_kit.logging` | DI-injectable logging |
 
 **Gotcha:** `@singleton`, `@inject`, `Injector` come from the `injector` package, NOT
-from nexus (`from injector import inject, singleton`). Nexus never re-exports them.
+from nexus-kit (`from injector import inject, singleton`). Nexus never re-exports them.
 
 **Dependencies:** `injector` and `pydantic-settings` are core dependencies of nexus —
 no extras, everything works out of the box.
@@ -265,7 +265,7 @@ a repository/DB layer; a test harness; HTTP/routing/retries.
 
 def main() -> None:
     if len(sys.argv) < 3 or sys.argv[1] != "new":
-        print("Usage: nexus new <app-name>")
+        print("Usage: nexus-kit new <app-name>")
         sys.exit(1)
 
     app_name = sys.argv[2]

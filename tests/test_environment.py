@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from nexus.interfaces import EnvironmentInterface
+from nexus_kit.interfaces import EnvironmentInterface
 
 
 class Env(EnvironmentInterface):

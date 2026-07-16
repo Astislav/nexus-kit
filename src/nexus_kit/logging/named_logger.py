@@ -3,7 +3,7 @@ from typing import ClassVar
 
 from injector import inject
 
-from nexus.logging.stdout_handler import StdoutHandler
+from nexus_kit.logging.stdout_handler import StdoutHandler
 
 
 class NamedLogger(logging.Logger):

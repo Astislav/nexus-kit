@@ -3,8 +3,8 @@ import inspect
 import logging
 from typing import Sequence, Type
 
-from nexus.interfaces.container import ContainerInterface
-from nexus.interfaces.service import ServiceInterface
+from nexus_kit.interfaces.container import ContainerInterface
+from nexus_kit.interfaces.service import ServiceInterface
 
 
 class ServiceRunner:

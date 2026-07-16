@@ -11,7 +11,7 @@ Nexus is a minimal Python application framework. It provides:
 - `ServiceInterface` / `ServiceRunner` — lifecycle: ordered start, guaranteed reverse-order stop of long-lived services (sync and async)
 - `Root` — a path utility that works in dev and PyInstaller-bundled environments
 - A logging base (`NamedLogger` / `StdoutHandler` / `LogFormatter`), DI-injectable
-- A scaffolding CLI: `nexus new <app-name>`
+- A scaffolding CLI: `nexus-kit new <app-name>`
 
 Nexus does NOT contain domain logic, UI code, or data access. It is infrastructure only.
 
@@ -25,7 +25,7 @@ no extras, everything works out of the box.
 ## Package layout
 
 ```
-nexus/
+nexus_kit/
 ├── interfaces/          # abstract contracts — always import from here first
 │   ├── application.py   # ApplicationInterface
 │   ├── container.py     # ContainerInterface
@@ -36,16 +36,16 @@ nexus/
 │   ├── named_logger.py  # NamedLogger
 │   ├── stdout_handler.py# StdoutHandler
 │   └── log_formatter.py # LogFormatter
-├── cli.py               # `nexus new` scaffolder
+├── cli.py               # `nexus-kit new` scaffolder
 └── root.py              # Root utility
 ```
 
 Import conventions:
 
 ```python
-from nexus.interfaces import ApplicationInterface, ContainerInterface, EnvironmentInterface
-from nexus.impl import ContainerInjector   # explicit — this is a concrete choice
-from nexus import Root
+from nexus_kit.interfaces import ApplicationInterface, ContainerInterface, EnvironmentInterface
+from nexus_kit.impl import ContainerInjector   # explicit — this is a concrete choice
+from nexus_kit import Root
 ```
 
 ## Bootstrap pattern
@@ -64,7 +64,7 @@ Application(env, container).run()             # 3. start app
 ## How to extend ApplicationInterface
 
 ```python
-from nexus.interfaces import ApplicationInterface, ContainerInterface, EnvironmentInterface
+from nexus_kit.interfaces import ApplicationInterface, ContainerInterface, EnvironmentInterface
 
 class Application(ApplicationInterface):
     def __init__(self, environment: EnvironmentInterface, container: ContainerInterface) -> None:
@@ -82,7 +82,7 @@ class Application(ApplicationInterface):
 ```python
 from pathlib import Path
 from injector import singleton
-from nexus.interfaces import EnvironmentInterface
+from nexus_kit.interfaces import EnvironmentInterface
 
 @singleton
 class Environment(EnvironmentInterface):
@@ -132,7 +132,7 @@ format by rebinding `LogFormatter` in `DI_CONFIG` (independent of the destinatio
 
 ```python
 from injector import singleton
-from nexus.logging import NamedLogger, LogFormatter
+from nexus_kit.logging import NamedLogger, LogFormatter
 
 @singleton
 class MainLogger(NamedLogger):
@@ -149,7 +149,7 @@ Long-lived services implement `ServiceInterface` (`start()`/`stop()`, sync or as
 in a `ServiceRunner` context:
 
 ```python
-from nexus.impl import ServiceRunner
+from nexus_kit.impl import ServiceRunner
 
 SERVICES = [Database, WebhookDispatcher, HttpApiService]   # startup order
 

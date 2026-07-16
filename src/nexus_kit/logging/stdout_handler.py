@@ -3,7 +3,7 @@ import sys
 
 from injector import inject, singleton
 
-from nexus.logging.log_formatter import LogFormatter
+from nexus_kit.logging.log_formatter import LogFormatter
 
 
 @singleton

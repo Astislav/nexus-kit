@@ -3,8 +3,8 @@ import asyncio
 import pytest
 from injector import inject, singleton
 
-from nexus.impl import ContainerInjector, ServiceRunner
-from nexus.interfaces import ServiceInterface
+from nexus_kit.impl import ContainerInjector, ServiceRunner
+from nexus_kit.interfaces import ServiceInterface
 
 
 class FakeContainer:

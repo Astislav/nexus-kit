@@ -35,7 +35,7 @@ dev = ["pytest>=8.0"]
 Repository = "https://github.com/Astislav/nexus"
 
 [project.scripts]
-nexus = "nexus.cli:main"
+nexus-kit = "nexus_kit.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/nexus"]
+packages = ["src/nexus_kit"]

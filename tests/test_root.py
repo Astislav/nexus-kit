@@ -2,7 +2,7 @@ import sys
 import types
 from pathlib import Path
 
-from nexus import Root
+from nexus_kit import Root
 
 
 def test_dev_paths_anchor_to_entry_script_dir(monkeypatch, tmp_path):
