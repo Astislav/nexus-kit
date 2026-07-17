@@ -2,7 +2,7 @@ name: publish
 
 on:
   push:
-    tags: ["v*"]
+    tags: ["v*", "*-v*"]
 
 jobs:
   publish:
@@ -12,7 +12,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - run: uv sync
+      - name: Resolve package from tag  # v1.2.3 -> nexus-kit; postgres-v1.2.3 -> nexus-kit-postgres
+        id: pkg
+        run: |
+          TAG="$GITHUB_REF_NAME"
+          if [[ "$TAG" == *-v* ]]; then
+            echo "name=nexus-kit-${TAG%%-v*}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=nexus-kit" >> "$GITHUB_OUTPUT"
+          fi
+      - run: uv sync --all-packages
       - run: uv run pytest -q
-      - run: uv build
+      - run: uv build --package ${{ steps.pkg.outputs.name }}
       - run: uv publish --trusted-publishing always
