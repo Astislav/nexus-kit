@@ -1,0 +1,45 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nexus-kit-fastapi"
+version = "0.1.0"
+description = "FastAPI + uvicorn as a nexus-kit lifecycle service, with a Depends bridge into the nexus container."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "Astislav Bozhevolnov", email = "astislav@gmail.com" }
+]
+keywords = ["nexus-kit", "fastapi", "uvicorn", "dependency-injection", "lifecycle"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+requires-python = ">=3.12"
+dependencies = [
+    "nexus-kit~=0.4.3",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+]
+
+[tool.uv.sources]
+nexus-kit = { workspace = true }  # dev resolves to the sibling dir; the published wheel keeps ~=0.4.3
+
+[dependency-groups]
+dev = ["pytest>=8.0", "httpx>=0.27"]
+
+[project.urls]
+Homepage = "https://github.com/Astislav/nexus"
+Repository = "https://github.com/Astislav/nexus"
+Issues = "https://github.com/Astislav/nexus/issues"
+Changelog = "https://github.com/Astislav/nexus/blob/master/nexus-kit-fastapi/CHANGELOG.md"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nexus_kit_fastapi"]

@@ -9,10 +9,10 @@ independently versioned and published PyPI distribution.
 | Package | PyPI | What it is |
 |---------|------|------------|
 | [`nexus-kit`](nexus-kit/) | [![PyPI](https://img.shields.io/pypi/v/nexus-kit)](https://pypi.org/project/nexus-kit/) | The kernel: entry point, typed config, DI, logger channels, service lifecycle, PyInstaller-safe paths |
+| [`nexus-kit-fastapi`](nexus-kit-fastapi/) | [![PyPI](https://img.shields.io/pypi/v/nexus-kit-fastapi)](https://pypi.org/project/nexus-kit-fastapi/) | FastAPI + uvicorn as a lifecycle service, `Injected(cls)` Depends bridge into the container |
 
-Satellites (planned, extracted from real apps as they migrate):
-`nexus-kit-postgres` (asyncpg pool as a lifecycle service),
-`nexus-kit-fastapi` (uvicorn as a lifecycle service).
+Satellites are extracted from real apps as they migrate — next up:
+`nexus-kit-postgres` (asyncpg pool as a lifecycle service).
 
 **Start here → [nexus-kit/README.md](nexus-kit/README.md)** — the full
 framework documentation.
