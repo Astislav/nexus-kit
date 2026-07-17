@@ -35,8 +35,15 @@ def get_container(request: Request) -> ContainerInterface:
     return container
 
 
-def Injected(cls):  # noqa: N802 — deliberately reads like FastAPI's Depends
+def Injected[T](cls: type[T]) -> T:  # noqa: N802 — deliberately reads like FastAPI's Depends
     """A `Depends(...)` that resolves `cls` from the nexus container.
+
+    The return type is a deliberate lie (the value is a Depends marker) —
+    the same lie FastAPI's own Depends idiom lives by: it makes
+    `sender: Sender = Injected(Sender)` type-check, so IDEs and mypy treat
+    the parameter as a real Sender. The precise typing mirrors
+    ContainerInterface.get(cls: type[T]) -> T, which this marker adapts
+    into FastAPI's dependency slot.
 
         @router.post("/send")
         async def send(text: str, sender: Sender = Injected(Sender)) -> None:

@@ -169,6 +169,20 @@ and teardown continues; async stops are bounded by `stop_grace` (10s default), s
 stops run inline unbounded. The runner installs no signal handlers — exit is triggered
 by uvicorn, Qt `aboutToQuit`, or your own code.
 
+## Bridging into host frameworks (the satellite pattern)
+
+The typed lookup `ContainerInterface.get(cls: type[T]) -> T` is the core's
+integration surface. A satellite bridging nexus into a host framework
+(FastAPI, Qt, a CLI runner) wraps that one call into the host's OWN
+dependency idiom — it does not invent a new one and does not patch the
+host. Reference implementation: `nexus_kit_fastapi.Injected(cls)` — a plain
+FastAPI `Depends` whose declared return type mirrors `get`'s `type[T] -> T`,
+so route signatures type-check as if they held the real object. Rules:
+declarative at the call site (visible in the signature, never a lookup
+buried in a function body); a narrow waist (one attach point, neither side
+knows the other); process-lifetime objects come from the container,
+request/short-lived ones stay native to the host.
+
 ## What nexus does NOT provide (you hand-roll these)
 
 - No signal handling — `ServiceRunner` never grabs SIGINT/SIGTERM; wire the exit
