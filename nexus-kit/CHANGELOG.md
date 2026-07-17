@@ -17,6 +17,9 @@ in 0.x, breaking changes bump the minor version.
   dev group — `uv.lock` then pins it exactly); the zero-setup fallback
   uses `uv run --with "pyinstaller>=6,<7"` instead of an unpinned latest.
 - `freeze` now generates only `app.spec`.
+- CI: the frozen-build job now runs on Windows, Linux **and macOS** — the
+  cross-platform claim is machine-proven, not aspirational. Docs speak of
+  "the executable", not "the exe".
 
 ## [0.4.6] — 2026-07-17
 

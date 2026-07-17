@@ -39,7 +39,7 @@ constructors, long-lived services start in order and stop in reverse —
 guaranteed, including on Ctrl+C. Your fifth app looks like your first,
 and anyone — human or AI — who has seen one has seen them all.
 
-## From zero to a shipped exe
+## From zero to a shipped executable
 
 ```bash
 uv tool install nexus-kit      # or: uv add nexus-kit in an existing project
@@ -49,13 +49,13 @@ cd my-app && uv sync
 python main.py                 # a worker ticks, stops cleanly — the whole shape
 
 nexus-kit freeze               # once: generate app.spec (PyInstaller)
-nexus-kit build                # every release: clean build → dist/my-app.exe
+nexus-kit build                # every release: clean build → dist/my-app  (.exe on Windows)
 ```
 
 Same commands on Windows, Linux and macOS — no `.bat`/`.sh` to keep in
-sync. Bundled assets live inside the exe (`Root.internal`), operator files
+sync. Bundled assets live inside the executable (`Root.internal`), operator files
 land next to it (`Root.external`). The full path — scaffold → freeze →
-build → run the exe — is exercised by CI on every push.
+build → run the executable — is exercised by CI on Windows, Linux and macOS on every push.
 
 ## Deployment is a file
 
@@ -88,7 +88,7 @@ nexus-kit makes distribution a build artifact.
 nominal typing; current Python fashion is structural (`Protocol`). We
 chose ABCs deliberately: the contract is visible at the declaration, and
 violations fail when the container builds the graph — not at 3 a.m. when
-the frozen exe on someone else's machine first hits the missing method.
+the frozen executable on someone else's machine first hits the missing method.
 
 Now check what the actual Zen says: *explicit is better than implicit*.
 One `DI_CONFIG` dict you can read. A `SERVICES` list that *is* the

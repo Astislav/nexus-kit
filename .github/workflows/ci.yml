@@ -29,26 +29,33 @@ jobs:
 
   frozen:
     # The flagship claim — "paths that survive PyInstaller" — proven on a real
-    # frozen build USING THE SHIPPED TOOLING: scaffold an app, `nexus-kit
-    # freeze` it, build with the generated app.spec, run the exe with .env
-    # placed NEXT TO THE EXE (not the cwd), assert the config actually loaded.
-    runs-on: windows-latest
+    # frozen build USING THE SHIPPED TOOLING, on every OS we claim: scaffold,
+    # `nexus-kit freeze`, `nexus-kit build`, then run the executable with .env
+    # placed NEXT TO IT (not the cwd) and assert the config actually loaded.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - run: uv sync --all-packages
       - name: Scaffold + freeze + build via the CLI
+        shell: bash
         run: |
           uv run nexus-kit new frozen-probe
           cd frozen-probe
           uv run --project .. nexus-kit freeze
           uv run --project .. --with "pyinstaller>=6,<7" nexus-kit build
-          Move-Item dist ..\frozen-dist
-      - name: Run the exe — .env beside the exe, cwd elsewhere
+      - name: Run the executable — .env beside it, cwd elsewhere
+        shell: bash
         run: |
-          Set-Content frozen-dist/.env "APP_NAME=frozen-and-loaded`nTICK_SECONDS=0.1`nRUN_SECONDS=1"
-          $out = & .\frozen-dist\frozen-probe.exe
-          Write-Host ($out -join "`n")
-          if (-not ($out -match "\[frozen-and-loaded\]")) { Write-Error "Root.external did not read .env from the exe dir"; exit 1 }
-          if (-not ($out -match "tick #1")) { Write-Error "ticker did not tick"; exit 1 }
-          if (-not ($out -match "stopped after")) { Write-Error "lifecycle did not stop cleanly"; exit 1 }
+          printf 'APP_NAME=frozen-and-loaded\nTICK_SECONDS=0.1\nRUN_SECONDS=1\n' > frozen-probe/dist/.env
+          EXE=frozen-probe/dist/frozen-probe
+          [ -f "$EXE.exe" ] && EXE="$EXE.exe"
+          out="$("$EXE")"
+          echo "$out"
+          echo "$out" | grep -q "frozen-and-loaded" || { echo "Root.external did not read .env from the executable dir"; exit 1; }
+          echo "$out" | grep -q "tick #1" || { echo "ticker did not tick"; exit 1; }
+          echo "$out" | grep -q "stopped after" || { echo "lifecycle did not stop cleanly"; exit 1; }

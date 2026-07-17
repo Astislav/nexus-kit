@@ -69,7 +69,7 @@ services), not designed in a vacuum.
 nominal typing; current Python fashion is structural (`Protocol`). We
 chose ABCs deliberately: the contract is visible at the declaration, and
 violations fail when the container builds the graph — not at 3 a.m. when
-the frozen exe on someone else's machine first hits the missing method.
+the frozen executable on someone else's machine first hits the missing method.
 
 Now check what the actual Zen says: *explicit is better than implicit*.
 One `DI_CONFIG` dict you can read. A `SERVICES` list that *is* the
@@ -116,11 +116,11 @@ And when it's time to ship it as a single executable:
 
 ```bash
 nexus-kit freeze          # once: generate app.spec
-nexus-kit build           # every release: clean build → dist/my-app.exe
+nexus-kit build           # every release: clean build → dist/my-app  (.exe on Windows)
 ```
 
 See [Freezing your app](#freezing-your-app-pyinstaller) for what goes
-inside the exe vs next to it.
+inside the executable vs next to it.
 
 ## What you get
 
@@ -209,7 +209,7 @@ class DatabaseService:
 ```python
 from nexus_kit import Root
 
-# next to the .exe (or next to main.py in dev) — user data, configs, output
+# next to the executable (or next to main.py in dev) — user data, configs, output
 config = Root.external(".env")
 db     = Root.external("data", "app.db")
 
@@ -219,7 +219,7 @@ html   = Root.internal("templates", "report.html")
 
 | Method | Dev (plain Python) | Bundled (PyInstaller) |
 |--------|--------------------|-----------------------|
-| `Root.external(...)` | `dir(main.py) / path` | `dir(exe) / path` |
+| `Root.external(...)` | `dir(main.py) / path` | `dir(executable) / path` |
 | `Root.internal(...)` | `dir(main.py) / path` | `_MEIPASS / path` |
 
 In dev the anchor is the entry script's directory (not the current working
@@ -235,12 +235,12 @@ Use `internal` for assets you ship inside the bundle (templates, images, default
 
 ```bash
 cd my-app
-nexus-kit freeze          # once: generate app.spec (exe name = directory name)
-nexus-kit build           # every release: clean build → dist/my-app.exe
+nexus-kit freeze          # once: generate app.spec (executable name = directory name)
+nexus-kit build           # every release: clean build → dist/my-app  (.exe on Windows)
 ```
 
 - **`freeze`** generates **`app.spec`** — with a `BUNDLED` list for data you
-  ship *inside* the exe (read via `Root.internal(...)`) — and fixes
+  ship *inside* the executable (read via `Root.internal(...)`) — and fixes
   `.gitignore`. The spec is source: commit it, grow its `BUNDLED` and
   `hiddenimports` lists as your app grows.
 - **`build`** cleans `build/`+`dist/`, runs PyInstaller, then copies the
@@ -254,8 +254,9 @@ Reproducibility: add PyInstaller to your dev group (`uv add --dev
 pyinstaller`) so `uv.lock` pins its exact version; without it, `build`
 falls back to `uv run --with "pyinstaller>=6,<7"`. Frozen targets need
 Windows 10+ or any modern Linux/macOS (the Python 3.12 floor). The whole
-path — scaffold → freeze → build → run the exe with `.env` beside it — is
-exercised by this repo's CI on every push.
+path — scaffold → freeze → build → run the executable with `.env` beside
+it — is exercised by this repo's CI on Windows, Linux and macOS on every
+push.
 
 ### Deployment is a file
 
