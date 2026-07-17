@@ -32,6 +32,17 @@ uv run pytest            # run every package's tests
 Releases are tag-driven: `v1.2.3` publishes `nexus-kit`;
 `<name>-v1.2.3` publishes `nexus-kit-<name>`.
 
+**New package checklist** — a directory beside the others, named after its
+PyPI dist (dir = dist name = tag prefix), containing: `pyproject.toml`,
+`src/<import_name>/`, `tests/`, `README.md` (with a *For AI assistants*
+section), `CHANGELOG.md`, `LICENSE`, and **`.ai/guide.md`**. Plus one
+pending publisher on PyPI and a row in the table above.
+
+**AI-guide discipline**: `.ai/guide.md` changes in the same commit as the
+public API it describes — a stale machine guide is worse than none, an
+agent will confidently build against a dead contract. Docs describe donor
+apps by class (a gateway, an analytics service), never by product name.
+
 ## License
 
 MIT © Astislav Bozhevolnov
