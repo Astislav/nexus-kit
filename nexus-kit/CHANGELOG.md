@@ -3,6 +3,21 @@
 All notable changes to nexus-kit. Versioning: [semver](https://semver.org/) —
 in 0.x, breaking changes bump the minor version.
 
+## [0.4.6] — 2026-07-17
+
+- **`nexus-kit freeze`** — the packaging story. Run from the app root:
+  generates `app.spec` (with a `BUNDLED` list mirroring `Root.internal`),
+  `build.bat` + `build.sh` (clean PyInstaller build, then EXTERNAL files —
+  `.env`, `resources/` — copied next to the exe, where `Root.external`
+  looks), and fixes `.gitignore` (`dist/`, `build/`; removes a legacy
+  `*.spec` ignore — the spec is source). Existing files are never
+  overwritten; `build.sh` is written LF-only even on Windows.
+- Scaffold `.gitignore` no longer ignores `*.spec`.
+- CI `frozen` job now builds through the shipped tooling (freeze + the
+  generated spec) instead of a hand-rolled pyinstaller command.
+- README: "Freezing your app" section; the generated AI cheat sheet gains
+  a Freezing section.
+
 ## [0.4.5] — 2026-07-17
 
 - Docs only: product-neutral wording for the donor applications on the

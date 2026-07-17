@@ -29,19 +29,22 @@ jobs:
 
   frozen:
     # The flagship claim — "paths that survive PyInstaller" — proven on a real
-    # frozen build: scaffold an app, freeze it, run the exe with .env placed
-    # NEXT TO THE EXE (not the cwd), assert the config was actually loaded.
+    # frozen build USING THE SHIPPED TOOLING: scaffold an app, `nexus-kit
+    # freeze` it, build with the generated app.spec, run the exe with .env
+    # placed NEXT TO THE EXE (not the cwd), assert the config actually loaded.
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - run: uv sync --all-packages
-      - name: Scaffold a probe app
+      - name: Scaffold + freeze artifacts
         run: |
           uv run nexus-kit new frozen-probe
-      - name: Freeze it
+          cd frozen-probe
+          uv run --project .. nexus-kit freeze
+      - name: Build with the generated spec
         run: |
-          uv run --with pyinstaller pyinstaller --onefile --name frozen-probe --distpath frozen-dist frozen-probe/main.py
+          uv run --with pyinstaller pyinstaller frozen-probe/app.spec --distpath frozen-dist --workpath frozen-build
       - name: Run the exe — .env beside the exe, cwd elsewhere
         run: |
           Set-Content frozen-dist/.env "APP_NAME=frozen-and-loaded`nTICK_SECONDS=0.1`nRUN_SECONDS=1"

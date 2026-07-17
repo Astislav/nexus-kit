@@ -204,6 +204,35 @@ a task scheduler, a shortcut — resolves the same paths as running it in place.
 Use `external` for anything the user owns (configs, databases, output files).
 Use `internal` for assets you ship inside the bundle (templates, images, default configs).
 
+## Freezing your app (PyInstaller)
+
+`Root` is one half of the packaging story; the other half is generated for you:
+
+```bash
+cd my-app
+nexus-kit freeze          # exe name defaults to the directory name
+
+build.bat                 # windows
+sh build.sh               # linux / macos
+# → dist/my-app.exe
+```
+
+`freeze` creates three files and fixes `.gitignore` (`dist/`, `build/`):
+
+- **`app.spec`** — the PyInstaller spec, with a `BUNDLED` list for data you
+  ship *inside* the exe (templates, static, default assets). Bundled data is
+  read via `Root.internal(...)`.
+- **`build.bat` / `build.sh`** — clean build via
+  `uv run --with pyinstaller pyinstaller app.spec`, then copy the EXTERNAL
+  files (`.env`, `resources/` if present) *next to* the exe — that's where
+  `Root.external(...)` looks in a frozen build.
+
+The spec is source — commit it, grow its `BUNDLED` and `hiddenimports`
+lists as your app grows. Frozen targets need Windows 10+ or any modern
+Linux/macOS (the Python 3.12 floor). The whole path — scaffold → freeze →
+run the exe with `.env` beside it — is exercised by this repo's CI on every
+push.
+
 ## Logging
 
 `NamedLogger` is a base for typed, DI-injectable logger channels — subclass

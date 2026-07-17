@@ -12,7 +12,9 @@ nexus-kit is a minimal Python application framework. It provides:
 - `ServiceInterface` / `ServiceRunner` — lifecycle: ordered start, guaranteed reverse-order stop of long-lived services (sync and async)
 - `Root` — a path utility that works in dev and PyInstaller-bundled environments
 - A logging base (`NamedLogger` / `StdoutHandler` / `LogFormatter`), DI-injectable
-- A scaffolding CLI: `nexus-kit new <app-name>`
+- A scaffolding CLI: `nexus-kit new <app-name>`; packaging via `nexus-kit freeze`
+  (generates `app.spec` + `build.bat`/`build.sh`, BUNDLED↔`Root.internal`,
+  EXTERNAL-next-to-exe↔`Root.external`)
 
 Nexus does NOT contain domain logic, UI code, or data access. It is infrastructure only.
 
