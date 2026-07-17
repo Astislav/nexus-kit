@@ -204,7 +204,7 @@ No domain, HTTP or DB.
 | `ContainerInterface` | `nexus_kit.interfaces` | DI contract: `get(cls)`, `set(cls, value)` |
 | `EnvironmentInterface` | `nexus_kit.interfaces` | typed config base (pydantic BaseSettings + `@singleton`) |
 | `ServiceInterface` | `nexus_kit.interfaces` | long-lived service: `start()`/`stop()` (sync or async, `stop()` idempotent) |
-| `Root` | `nexus` | paths: `Root.internal(*p)` (bundled assets) / `Root.external(*p)` (files next to the exe — or next to `main.py` in dev: `.env`, db) |
+| `Root` | `nexus_kit` | paths: `Root.internal(*p)` (bundled assets) / `Root.external(*p)` (files next to the exe — or next to `main.py` in dev: `.env`, db) |
 | `ContainerInjector` | `nexus_kit.impl` | concrete container; constructor takes `DI_CONFIG: dict[Type, Impl]` |
 | `ServiceRunner` | `nexus_kit.impl` | ordered start / guaranteed reverse-order stop: `with`/`async with ServiceRunner(container, SERVICES)` around the app body |
 | `NamedLogger` / `StdoutHandler` / `LogFormatter` | `nexus_kit.logging` | DI-injectable logging |
@@ -287,11 +287,11 @@ def main() -> None:
         path.write_text(content, encoding="utf-8")
 
     print(f"Created {app_name}/")
-    print(f"")
+    print("")
     print(f"  cd {app_name}")
-    print(f"")
-    print(f"  # install dependencies:")
-    print(f"  uv sync                  # uv")
-    print(f"  pip install -e .         # pip")
-    print(f"")
-    print(f"  python main.py")
+    print("")
+    print("  # install dependencies:")
+    print("  uv sync                  # uv")
+    print("  pip install -e .         # pip")
+    print("")
+    print("  python main.py")

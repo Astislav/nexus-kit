@@ -102,8 +102,14 @@ class ServiceRunner:
                 if inspect.isawaitable(result):
                     await result
             except BaseException:
-                await self._stop_one_async(service)  # start() may have opened resources before failing
-                await self.stop_all_async()
+                # start() may have opened resources before failing — stop it too.
+                # A cancellation arriving during this cleanup must win over the
+                # original startup error: the task WAS cancelled, and swallowing
+                # that breaks the asyncio contract.
+                cancelled = await self._stop_one_async(service)
+                await self.stop_all_async()  # itself re-raises an intercepted cancellation
+                if cancelled:
+                    raise asyncio.CancelledError
                 raise
             self._started.append(service)
             self._log.info("started %s", cls.__name__)

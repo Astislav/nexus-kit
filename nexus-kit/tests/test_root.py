@@ -1,6 +1,5 @@
 import sys
 import types
-from pathlib import Path
 
 from nexus_kit import Root
 

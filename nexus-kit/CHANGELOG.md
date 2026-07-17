@@ -3,6 +3,19 @@
 All notable changes to nexus-kit. Versioning: [semver](https://semver.org/) —
 in 0.x, breaking changes bump the minor version.
 
+## [0.4.4] — 2026-07-17
+
+- **ServiceRunner**: a cancellation arriving during the emergency cleanup of
+  a failed `start()` now wins over the original startup error — previously
+  it was swallowed and the start error escaped instead of `CancelledError`,
+  breaking the asyncio contract (resources did not leak; the semantics did).
+- Scaffold: the generated AI cheat sheet listed `Root` under import `nexus`
+  instead of `nexus_kit`.
+- CI: ruff lint job (8 findings fixed across the workspace) and a real
+  PyInstaller freeze test on Windows — scaffold, build `--onefile`, run the
+  exe with `.env` placed next to it, assert the config loads and the
+  lifecycle stops cleanly.
+
 ## [0.4.3] — 2026-07-17
 
 - **ServiceRunner**: a service whose `start()` fails now gets its own

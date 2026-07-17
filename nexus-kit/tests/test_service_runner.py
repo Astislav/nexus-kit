@@ -216,6 +216,41 @@ def test_cancellation_during_teardown_finishes_remaining_stops():
     assert "-A" in journal  # sync service still stopped after the cancellation
 
 
+def test_cancellation_during_failed_start_cleanup_wins_over_start_error():
+    """Regression: cancel arriving during the emergency stop of a failed
+    service was swallowed — the original start error escaped instead of
+    CancelledError, breaking the asyncio contract."""
+    journal = []
+    a = sync_service("A", journal)
+
+    class Faulty(ServiceInterface):
+        async def start(self):
+            raise RuntimeError("start boom")
+
+        async def stop(self):
+            journal.append("-F:begin")
+            await asyncio.sleep(1.0)
+            journal.append("-F:end")
+
+    faulty = Faulty()
+    runner = ServiceRunner(FakeContainer(a, faulty), [type(a), type(faulty)], stop_grace=5.0)
+
+    async def scenario():
+        async def run():
+            async with runner:
+                pass
+
+        task = asyncio.create_task(run())
+        await asyncio.sleep(0.05)  # A started, Faulty.start raised, its emergency stop is sleeping
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):  # cancellation wins, not RuntimeError
+            await task
+
+    asyncio.run(scenario())
+    assert "-F:begin" in journal  # the failed service's own cleanup began
+    assert "-A" in journal        # and the rollback of started services still completed
+
+
 def test_integration_with_container_injector():
     journal = []
 

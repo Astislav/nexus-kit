@@ -1,2 +1,5 @@
 [tool.uv.workspace]
 members = ["nexus-kit*"]
+
+[dependency-groups]
+dev = ["ruff>=0.15"]
