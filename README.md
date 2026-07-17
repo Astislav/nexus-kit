@@ -320,12 +320,16 @@ Sync apps (pygame, Qt with worker threads) use the plain context manager:
 Guarantees:
 
 - start in order, stop in reverse — on normal exit, exception, Ctrl+C;
-- crash-safe startup: if the N-th `start()` fails, the already started N-1
-  are stopped in reverse and the error re-raises;
+- crash-safe startup: if the N-th `start()` fails, that service's own
+  `stop()` is still called (write `stop()` to tolerate a partially
+  initialized state), then the already started N-1 are stopped in reverse
+  and the error re-raises;
 - one failing `stop()` doesn't block the rest — it is logged and teardown
   continues;
-- in the async context each `stop()` is bounded by `stop_grace` seconds
-  (default 10), then cancelled.
+- in the async context each **async** `stop()` is bounded by `stop_grace`
+  seconds (default 10), then cancelled; a **sync** `stop()` runs inline and
+  is not bounded — offloading it to a thread would break thread-affine
+  teardown (Qt, COM).
 
 The runner installs **no signal handlers** — who triggers the exit is your
 app's business (uvicorn's own handlers, Qt's `aboutToQuit`, or your own).

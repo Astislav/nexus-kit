@@ -62,7 +62,32 @@ def test_sync_failed_start_rolls_back_started_and_reraises():
     with pytest.raises(RuntimeError, match="B failed"):
         with runner:
             journal.append("run")
-    assert journal == ["+A", "-A"]
+    # the failed service gets a best-effort stop() too, then the rollback
+    assert journal == ["+A", "-B", "-A"]
+
+
+def test_sync_failed_start_still_stops_the_failed_service():
+    """Regression: start() that opened a resource and then raised leaked it."""
+
+    class HalfOpen(ServiceInterface):
+        def __init__(self, journal):
+            self._journal = journal
+
+        def start(self):
+            self._journal.append("+half:opened")  # resource acquired...
+            raise RuntimeError("...then start failed")
+
+        def stop(self):
+            self._journal.append("-half:closed")
+
+    journal = []
+    a = sync_service("A", journal)
+    half = HalfOpen(journal)
+    runner = ServiceRunner(FakeContainer(a, half), [type(a), type(half)])
+    with pytest.raises(RuntimeError):
+        with runner:
+            pass
+    assert journal == ["+A", "+half:opened", "-half:closed", "-A"]
 
 
 def test_sync_body_exception_still_stops_services():
@@ -121,7 +146,36 @@ def test_async_failed_start_rolls_back():
 
     with pytest.raises(RuntimeError, match="BAD"):
         asyncio.run(scenario())
-    assert journal == ["+X", "-X"]
+    # the failed service gets a best-effort stop() too, then the rollback
+    assert journal == ["+X", "-BAD", "-X"]
+
+
+def test_async_failed_start_still_stops_the_failed_service():
+    """Regression: async start() that opened a resource and then raised leaked it."""
+
+    class HalfOpen(ServiceInterface):
+        def __init__(self, journal):
+            self._journal = journal
+
+        async def start(self):
+            self._journal.append("+half:opened")
+            raise RuntimeError("...then start failed")
+
+        async def stop(self):
+            self._journal.append("-half:closed")
+
+    journal = []
+    x = async_service("X", journal)
+    half = HalfOpen(journal)
+    runner = ServiceRunner(FakeContainer(x, half), [type(x), type(half)])
+
+    async def scenario():
+        async with runner:
+            pass
+
+    with pytest.raises(RuntimeError):
+        asyncio.run(scenario())
+    assert journal == ["+X", "+half:opened", "-half:closed", "-X"]
 
 
 def test_async_stop_grace_cancels_laggard_but_stops_the_rest():

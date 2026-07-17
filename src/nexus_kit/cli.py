@@ -248,9 +248,11 @@ class Application(ApplicationInterface):
         # leaving the block stops everything in reverse — on return, exception, Ctrl+C
 ```
 
-Guarantees: crash-safe startup (a failed `start()` rolls back the already-started
-services and re-raises); a failing `stop()` is logged, teardown continues; async stops
-are bounded by `stop_grace` (default 10s), then cancelled. The runner never grabs
+Guarantees: crash-safe startup (a failed `start()` still gets its own best-effort
+`stop()`, then the already-started services roll back — write `stop()` to tolerate
+partially initialized state); a failing `stop()` is logged, teardown continues; async
+stops are bounded by `stop_grace` (default 10s), sync stops run inline unbounded;
+`stop()` must be idempotent. The runner never grabs
 signals — the exit is triggered by uvicorn / Qt `aboutToQuit` / your own code. Services
 do NOT go into `DI_CONFIG` (concrete `@singleton` classes resolve themselves).
 

@@ -163,9 +163,11 @@ with ServiceRunner(self._container, SERVICES):
 ```
 
 Guarantees: reverse-order stop on any exit; crash-safe startup (a failed `start()`
-rolls back the already-started services); a failing `stop()` is logged and teardown
-continues; async stops are bounded by `stop_grace` (10s default). The runner installs
-no signal handlers — exit is triggered by uvicorn, Qt `aboutToQuit`, or your own code.
+still gets its own best-effort `stop()`, then the already-started services roll back —
+write `stop()` to tolerate partially initialized state); a failing `stop()` is logged
+and teardown continues; async stops are bounded by `stop_grace` (10s default), sync
+stops run inline unbounded. The runner installs no signal handlers — exit is triggered
+by uvicorn, Qt `aboutToQuit`, or your own code.
 
 ## What nexus does NOT provide (you hand-roll these)
 

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nexus-kit"
-version = "0.4.2"
+version = "0.4.3"
 description = "Application kernel for long-lived Python apps: one entry point, typed config, constructor DI, service lifecycle, PyInstaller-safe paths."
 readme = "README.md"
 license = { text = "MIT" }
@@ -25,7 +25,7 @@ classifiers = [
 requires-python = ">=3.12"
 dependencies = [
     "injector>=0.24.0",
-    "pydantic-settings>=2.13.1",
+    "pydantic-settings>=2.14.2",  # 2.12.0-2.14.1: GHSA-4xgf-cpjx-pc3j (secrets_dir symlink traversal)
 ]
 
 [dependency-groups]
@@ -35,7 +35,7 @@ dev = ["pytest>=8.0"]
 Homepage = "https://github.com/Astislav/nexus"
 Repository = "https://github.com/Astislav/nexus"
 Issues = "https://github.com/Astislav/nexus/issues"
-Changelog = "https://github.com/Astislav/nexus/releases"
+Changelog = "https://github.com/Astislav/nexus/blob/master/CHANGELOG.md"
 
 [project.scripts]
 nexus-kit = "nexus_kit.cli:main"
