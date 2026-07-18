@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.2.2] — 2026-07-18
+
+External review round; both cancellation edges reproduced before fixing.
+
+- **A cancelled `stop()` no longer strands the port.** The cancellation
+  re-raise happened before `sock.close()` — after a ServiceRunner
+  `stop_grace` timeout (which cancels exactly this path) the port stayed
+  taken until GC. The socket now closes in a `finally`. Regression test:
+  the port is rebindable immediately after a cancelled `stop()`.
+- **A cancelled `start()` leaves nothing behind.** Cancelling `start()`
+  while uvicorn was still starting (e.g. a hung lifespan) left the serve
+  task, the bound socket and the installed signal handlers alive. The
+  startup poll now tears all three down on cancellation and re-raises.
+- **Double `start()` raises** instead of silently overwriting the first
+  server's task/socket/handler state.
+
 ## [0.2.1] — 2026-07-18
 
 External review round; both findings reproduced in code before fixing.

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nexus-kit-fastapi"
-version = "0.2.1"
+version = "0.2.2"
 description = "FastAPI + uvicorn as a nexus-kit lifecycle service, with a Depends bridge into the nexus container."
 readme = "README.md"
 license = { text = "MIT" }

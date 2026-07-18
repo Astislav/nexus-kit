@@ -59,3 +59,16 @@ jobs:
           echo "$out" | grep -q "frozen-and-loaded" || { echo "Root.external did not read .env from the executable dir"; exit 1; }
           echo "$out" | grep -q "tick #1" || { echo "ticker did not tick"; exit 1; }
           echo "$out" | grep -q "stopped after" || { echo "lifecycle did not stop cleanly"; exit 1; }
+      - name: Windowed build must start and exit cleanly (Windows)
+        # console=False means sys.stderr (and stdout) are None — the class of
+        # startup crash a console build can never catch. We only assert a
+        # clean exit: stdout-to-nowhere is intentional in windowed apps.
+        if: runner.os == 'Windows'
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          cd frozen-probe
+          sed -i 's/console=True,/console=False,/' app.spec
+          uv run --project .. --with "pyinstaller>=6,<7" nexus-kit build
+          printf 'APP_NAME=windowed\nTICK_SECONDS=0.1\nRUN_SECONDS=1\n' > dist/.env
+          ./dist/frozen-probe.exe

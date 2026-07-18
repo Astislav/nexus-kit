@@ -6,6 +6,7 @@ from pathlib import Path
 _TEMPLATES: dict[str, str] = {
     "main.py": """\
 import faulthandler
+import sys
 
 from app.application import Application
 from app.config.di import DI_CONFIG
@@ -14,7 +15,8 @@ from nexus_kit import Root
 from nexus_kit.impl import ContainerInjector
 
 if __name__ == "__main__":
-    faulthandler.enable(all_threads=True)
+    if sys.stderr is not None:  # windowed builds (console=False) have no stderr
+        faulthandler.enable(all_threads=True)
 
     env = Environment(Root.external(".env"))
     container = ContainerInjector(DI_CONFIG)

@@ -79,9 +79,12 @@ class HttpService(ServiceInterface):
     - start() binds the socket itself, synchronously — a busy port raises a
       plain OSError right in start(), so ServiceRunner can roll back cleanly;
       uvicorn's in-task sys.exit()s (e.g. a failed FastAPI lifespan) are
-      translated into a normal RuntimeError for the same reason.
+      translated into a normal RuntimeError for the same reason. Cancelling
+      a still-starting start() tears everything down (serve task, socket,
+      signal handlers); calling start() on a started service raises.
     - stop() is a graceful uvicorn shutdown, idempotent; a cancellation of
-      the caller is honoured, not swallowed.
+      the caller is honoured, not swallowed — and the port is released
+      either way.
     - wait() blocks until the server exits — the natural Application body:
       `async with ServiceRunner(...): await container.get(ApiService).wait()`.
     - signals: handled by the bridge by default (`handle_signals = True`) —
@@ -118,6 +121,8 @@ class HttpService(ServiceInterface):
         return uvicorn.Config(app, host=self.host, port=self.port, log_level=self.log_level)
 
     async def start(self) -> None:
+        if self._server is not None:
+            raise RuntimeError(f"{type(self).__name__} is already started — stop() it first")
         app = self.create_app()
         attach_container(app, self._container)
         config = self.uvicorn_config(app)
@@ -137,8 +142,23 @@ class HttpService(ServiceInterface):
         if self.handle_signals:
             self._install_signal_handlers()
         self._task = asyncio.create_task(self._run_server(), name=f"{type(self).__name__}-serve")
-        while not self._server.started and not self._task.done():
-            await asyncio.sleep(0.01)
+        try:
+            while not self._server.started and not self._task.done():
+                await asyncio.sleep(0.01)
+        except asyncio.CancelledError:
+            # Cancelled mid-startup (e.g. a bounded rollback around a hung
+            # lifespan): leave nothing behind — no serve task, no signal
+            # handlers, no bound port.
+            task, sock = self._task, self._socket
+            self._restore_signal_handlers()
+            self._reset()
+            task.cancel()
+            try:
+                with contextlib.suppress(BaseException):
+                    await task
+            finally:
+                sock.close()
+            raise
         if self._task.done():
             task, sock = self._task, self._socket
             self._restore_signal_handlers()
@@ -170,20 +190,25 @@ class HttpService(ServiceInterface):
         self._reset()
         if server is not None:
             server.should_exit = True
-        if task is not None:
-            try:
-                await task
-            except asyncio.CancelledError:
-                current = asyncio.current_task()
-                if current is not None and current.cancelling():
-                    # The cancellation targets US — honour it. Cancel the
-                    # server task too so it doesn't linger, then re-raise.
-                    task.cancel()
-                    raise
-                # Otherwise the server task itself was cancelled: it is down,
-                # which is what stop() wanted.
-        if sock is not None:
-            sock.close()
+        try:
+            if task is not None:
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    current = asyncio.current_task()
+                    if current is not None and current.cancelling():
+                        # The cancellation targets US — honour it. Cancel the
+                        # server task too so it doesn't linger, then re-raise.
+                        task.cancel()
+                        raise
+                    # Otherwise the server task itself was cancelled: it is
+                    # down, which is what stop() wanted.
+        finally:
+            # Even when the drain is cancelled (a ServiceRunner stop_grace
+            # timeout takes exactly this path) the port must be released NOW,
+            # not when the GC finds the socket.
+            if sock is not None:
+                sock.close()
 
     # --- signal handling (bridge-owned; see module docstring) ---
 

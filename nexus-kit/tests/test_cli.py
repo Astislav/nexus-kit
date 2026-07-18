@@ -155,6 +155,27 @@ def test_build_cleans_stale_dist(tmp_path, monkeypatch):
     assert not (proj / "dist" / "old-garbage.exe").exists()
 
 
+def test_generated_app_survives_windowed_mode_without_stderr(tmp_path, monkeypatch):
+    """Regression: PyInstaller windowed builds (console=False) run with
+    sys.stderr = None — an unguarded faulthandler.enable() crashed the
+    generated app on its own first line."""
+    proj = scaffold(tmp_path, monkeypatch)
+    (proj / ".env").write_text("APP_NAME=windowed\nTICK_SECONDS=0.05\nRUN_SECONDS=0.3\n", encoding="utf-8")
+
+    env = os.environ | {"PYTHONIOENCODING": "utf-8"}
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys, runpy; sys.stderr = None; runpy.run_path('main.py', run_name='__main__')",
+        ],
+        cwd=proj, env=env, capture_output=True, text=True, encoding="utf-8", timeout=60,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "tick #1" in result.stdout  # the app actually ran, not just imported
+
+
 def test_generated_app_runs_through_full_lifecycle(tmp_path, monkeypatch):
     proj = scaffold(tmp_path, monkeypatch)
     (proj / ".env").write_text("APP_NAME=probe\nTICK_SECONDS=0.05\nRUN_SECONDS=0.4\n", encoding="utf-8")

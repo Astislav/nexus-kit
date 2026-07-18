@@ -144,6 +144,106 @@ def test_failed_lifespan_releases_the_port_immediately():
     asyncio.run(scenario())
 
 
+def test_cancelled_stop_still_releases_the_port():
+    """Regression: cancelling stop() mid-drain re-raised the CancelledError
+    before sock.close() — the port stayed taken until GC. This is exactly the
+    path a ServiceRunner stop_grace timeout takes."""
+    probe = socket.socket()
+    probe.bind(("127.0.0.1", 0))
+    free_port = probe.getsockname()[1]
+    probe.close()
+
+    @singleton
+    class Draining(HttpService):
+        port = free_port
+        log_level = "critical"
+        handle_signals = False
+
+        def create_app(self) -> FastAPI:
+            return FastAPI()
+
+    async def scenario():
+        service = ContainerInjector({}).get(Draining)
+        await service.start()
+        stopper = asyncio.create_task(service.stop())
+        await asyncio.sleep(0)  # stop() reaches its `await task` (the drain)
+        stopper.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await stopper
+        rebind = socket.socket()  # the port must be free NOW, not after GC
+        try:
+            rebind.bind(("127.0.0.1", free_port))
+        finally:
+            rebind.close()
+
+    asyncio.run(scenario())
+
+
+def test_cancelled_start_leaves_nothing_behind():
+    """Regression: cancelling start() while uvicorn was still starting up
+    (e.g. a hung lifespan) left the serve task, the bound socket and the
+    signal handlers alive."""
+    import signal as signal_module
+    from contextlib import asynccontextmanager
+
+    @asynccontextmanager
+    async def hung_startup(app):
+        await asyncio.sleep(30)  # keeps start() polling long enough to cancel
+        yield  # pragma: no cover
+
+    probe = socket.socket()
+    probe.bind(("127.0.0.1", 0))
+    free_port = probe.getsockname()[1]
+    probe.close()
+
+    @singleton
+    class HungOnPort(HttpService):
+        port = free_port
+        log_level = "critical"
+
+        def create_app(self) -> FastAPI:
+            return FastAPI(lifespan=hung_startup)
+
+    def sentinel(sig, frame):  # pragma: no cover — never actually fired
+        pass
+
+    previous = signal_module.signal(signal_module.SIGINT, sentinel)
+    try:
+
+        async def scenario():
+            service = ContainerInjector({}).get(HungOnPort)
+            starter = asyncio.create_task(service.start())
+            await asyncio.sleep(0.1)  # start() is polling; uvicorn hangs in lifespan startup
+            starter.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await starter
+            assert signal_module.getsignal(signal_module.SIGINT) is sentinel  # handlers restored
+            with pytest.raises(RuntimeError):
+                _ = service.bound_port  # state reset — the service never "started"
+            rebind = socket.socket()  # the port is free NOW
+            try:
+                rebind.bind(("127.0.0.1", free_port))
+            finally:
+                rebind.close()
+
+        asyncio.run(scenario())
+    finally:
+        signal_module.signal(signal_module.SIGINT, previous)
+
+
+def test_double_start_raises_instead_of_leaking_the_first_server():
+    async def scenario():
+        service = ContainerInjector({}).get(PingService)
+        await service.start()
+        try:
+            with pytest.raises(RuntimeError, match="already started"):
+                await service.start()
+        finally:
+            await service.stop()
+
+    asyncio.run(scenario())
+
+
 def test_signal_handlers_are_saved_and_restored():
     """Regression: the bridge silently clobbered pre-existing signal handlers
     and left them gone after stop()."""

@@ -37,9 +37,12 @@ Contract:
 - `start()` binds the socket itself, synchronously — a busy port raises a
   plain `OSError` in `start()`, so ServiceRunner rolls back cleanly; a
   failed FastAPI lifespan (uvicorn's in-task `sys.exit`) is translated into
-  a normal `RuntimeError` for the same reason.
+  a normal `RuntimeError` for the same reason. Cancelling a still-starting
+  `start()` tears everything down (serve task, socket, signal handlers);
+  `start()` on an already-started service raises `RuntimeError`.
 - `stop()` is a graceful uvicorn shutdown, idempotent; a cancellation of
-  the caller is honoured, not swallowed.
+  the caller is honoured, not swallowed — and the port is released either
+  way (a ServiceRunner `stop_grace` timeout takes exactly this path).
 - `wait()` blocks until the server exits — the natural Application body:
   `async with ServiceRunner(...): await container.get(ApiService).wait()`.
 - Signals are handled BY THE BRIDGE (default `handle_signals = True`):

@@ -3,6 +3,17 @@
 All notable changes to nexus-kit. Versioning: [semver](https://semver.org/) —
 in 0.x, breaking changes bump the minor version.
 
+## [0.4.9] — 2026-07-18
+
+- **Scaffolded `main.py` survives windowed builds.** `faulthandler.enable()`
+  was unconditional, but PyInstaller windowed apps (`console=False`) run
+  with `sys.stderr = None` — the generated app died on its own first line.
+  The scaffold now guards it (`if sys.stderr is not None`), and CI builds
+  and runs a windowed executable on Windows so it stays true.
+- The `4 - Beta` classifier actually reaches PyPI: 0.4.8 was published from
+  a commit made before the classifier change (a tag/commit ordering slip),
+  so its PyPI page still said Alpha.
+
 ## [0.4.8] — 2026-07-18
 
 - Scaffold generates `.env.example` alongside `.env` — so the default
