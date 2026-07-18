@@ -15,68 +15,19 @@ Install [`nexus-kit`](https://pypi.org/project/nexus-kit/), import `nexus_kit`.
 [Issues](https://github.com/Astislav/nexus/issues) ·
 [Releases](https://github.com/Astislav/nexus/releases)
 
-## Why
+**Built for composite, long-lived apps**: a Qt desk driving hardware, a
+pygame game, a daemon, a server where HTTP is just one service among
+workers, sockets and a device fleet. Every app gets the same shape —
+four-line `main.py`, typed `.env` config, one `DI_CONFIG` dict, services
+started in order and stopped in reverse (guaranteed), and a `freeze`/
+`build` path to a shippable executable. *Not* for short scripts (a module
+with functions is already DI) and not for apps living happily inside
+FastAPI/Django conventions.
 
-If you build long-lived Python apps **outside a web framework's cradle** — a
-Qt tool driving hardware, a pygame game, a Windows daemon, an API server
-where uvicorn is just one service among many — you end up hand-rolling the
-same bootstrap in every repo: an entry point, `.env` parsing, wiring services
-together, logging setup, ordered start/stop, and the `sys._MEIPASS` dance for
-frozen builds.
-
-nexus-kit is that bootstrap extracted once and turned into a convention. Every
-app gets the same shape: `main.py` is four lines, config is a typed class,
-services declare their dependencies in constructors, long-lived services
-start in order and stop in reverse — guaranteed. Your fifth app looks like
-your first, and anyone (human or AI assistant) who has seen one has seen
-them all.
-
-## Who it's for
-
-- You ship Python as **PyInstaller executables** and are tired of path bugs
-  that only appear after freezing.
-- You maintain **several apps** — web and not — and want them all shaped the
-  same instead of each inventing its own bootstrap.
-- You want **constructor injection without magic**: one explicit
-  `{Interface: Implementation}` dict, no string keys, no globals, no
-  auto-scanning.
-- Your app has **services that must start in order and stop cleanly** —
-  DB pools, pollers, device monitors, an embedded HTTP server.
-
-## Who it's NOT for
-
-- **Short scripts.** A module with functions is already dependency
-  injection. This would be ceremony.
-- **Apps living happily inside FastAPI/Django conventions.** Their lifespan
-  and DI are enough; nexus-kit solves the world outside that cradle.
-- **Teams that want a mainstream stack.** This is an opinionated personal
-  kernel: conventions over ecosystem, no Stack Overflow answers.
-
-## What it is, honestly
-
-Opinionated glue — not invention. Config is stock
-[pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/),
-DI is stock [injector](https://injector.readthedocs.io/); nexus-kit adds the
-parts nobody packages: the `Root` path resolver for frozen builds, typed
-logger channels, the `ServiceRunner` lifecycle, a scaffolder, and the
-convention that ties them together. Extracted from real production apps
-(a Qt hardware-control desk, a messaging gateway, forensic analytics
-services), not designed in a vacuum.
-
-## “Is this even pythonic?” — an honest answer
-
-**“This looks like Java.”** Partially guilty. `GreeterInterface` is
-nominal typing; current Python fashion is structural (`Protocol`). We
-chose ABCs deliberately: the contract is visible at the declaration, and
-violations fail when the container builds the graph — not at 3 a.m. when
-the frozen executable on someone else's machine first hits the missing method.
-
-Now check what the actual Zen says: *explicit is better than implicit*.
-One `DI_CONFIG` dict you can read. A `SERVICES` list that *is* the
-startup order. No decorator scanning, no string keys, no import-time side
-effects, no metaclasses. nexus-kit breaks Python **fashion**, not Python
-**philosophy** — plenty of "pythonic" frameworks resolve your
-dependencies by magic and call it elegance.
+**Why this exists, who it's for, and the honest “is this even pythonic?”
+conversation → [the repository landing
+page](https://github.com/Astislav/nexus#readme).** This page is the
+kernel reference: install, bootstrap, and every contract.
 
 ## Install
 
@@ -128,7 +79,8 @@ inside the executable vs next to it.
 my-app/
 ├── main.py                          # entry point — the whole bootstrap, 4 lines
 ├── pyproject.toml
-├── .env
+├── .env                             # local config (gitignored, never ships by default)
+├── .env.example                     # operator template — `build` ships it next to the executable
 └── app/
     ├── application.py               # SERVICES + ServiceRunner around the main loop
     ├── config/

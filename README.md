@@ -39,6 +39,39 @@ constructors, long-lived services start in order and stop in reverse —
 guaranteed, including on Ctrl+C. Your fifth app looks like your first,
 and anyone — human or AI — who has seen one has seen them all.
 
+## Who it's for
+
+- You ship Python as **PyInstaller executables** and are tired of path
+  bugs that only appear after freezing.
+- You maintain **several apps** — web and not — and want them all shaped
+  the same instead of each inventing its own bootstrap.
+- You want **constructor injection without magic**: one explicit
+  `{Interface: Implementation}` dict, no string keys, no globals, no
+  auto-scanning.
+- Your app has **services that must start in order and stop cleanly** —
+  DB pools, pollers, device monitors, an embedded HTTP server.
+
+## Who it's NOT for
+
+- **Short scripts.** A module with functions is already dependency
+  injection. This would be ceremony.
+- **Apps living happily inside FastAPI/Django conventions.** Their
+  lifespan and DI are enough; nexus-kit solves the world outside that
+  cradle.
+- **Teams that want a mainstream stack.** This is an opinionated kernel:
+  conventions over ecosystem, no Stack Overflow answers.
+
+## What it is, honestly
+
+Opinionated glue — not invention. Config is stock
+[pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/),
+DI is stock [injector](https://injector.readthedocs.io/); nexus-kit adds
+the parts nobody packages: the `Root` path resolver for frozen builds,
+typed logger channels, the `ServiceRunner` lifecycle, a scaffolder, and
+the convention that ties them together. Extracted from real production
+apps (a Qt hardware-control desk, a messaging gateway, forensic analytics
+services), not designed in a vacuum.
+
 ## From zero to a shipped executable
 
 ```bash
@@ -167,6 +200,11 @@ pending publisher on PyPI and a row in the table above.
 public API it describes — a stale machine guide is worse than none, an
 agent will confidently build against a dead contract. Docs describe donor
 apps by class (a gateway, an analytics service), never by product name.
+
+**README split**: audience and philosophy text (why / who for / pythonic)
+lives ONLY in this root README; package READMEs are references and carry
+a one-paragraph audience distillation plus a link here — duplicated pitch
+text drifts.
 
 ## License
 
