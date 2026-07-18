@@ -144,9 +144,12 @@ Every scaffolded app ships a `CLAUDE.md` and a version-pinned cheat sheet
 (`.ai/nexus-kit.md`); every package in this repo carries a
 machine-oriented [`.ai/guide.md`](nexus-kit/.ai/guide.md) — API contract,
 conventions, anti-patterns — updated **in the same commit** as the API it
-describes. Point your agent at it and it builds on nexus-kit idiomatically
-without reading the source. Frameworks used to be documented for humans;
-this one is documented for the pair of you.
+describes. Satellites ship their guide **inside the wheel**: after
+`uv add nexus-kit-fastapi`, one `nexus-kit sync-ai` mirrors it into your
+app's `.ai/`, version-matched to what you installed. Point your agent at
+it and it builds on nexus-kit idiomatically without reading the source.
+Frameworks used to be documented for humans; this one is documented for
+the pair of you.
 
 ## Principles
 
@@ -193,8 +196,10 @@ Releases are tag-driven: `v1.2.3` publishes `nexus-kit`;
 **New package checklist** — a directory beside the others, named after its
 PyPI dist (dir = dist name = tag prefix), containing: `pyproject.toml`,
 `src/<import_name>/`, `tests/`, `README.md` (with a *For AI assistants*
-section), `CHANGELOG.md`, `LICENSE`, and **`.ai/guide.md`**. Plus one
-pending publisher on PyPI and a row in the table above.
+section), `CHANGELOG.md`, `LICENSE`, and **`.ai/guide.md`** —
+force-included into the wheel as `<import_name>/.ai/guide.md` so
+`nexus-kit sync-ai` can mirror it into consumer apps. Plus one pending
+publisher on PyPI and a row in the table above.
 
 **AI-guide discipline**: `.ai/guide.md` changes in the same commit as the
 public API it describes — a stale machine guide is worse than none, an

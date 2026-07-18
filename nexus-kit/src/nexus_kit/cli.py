@@ -1,3 +1,4 @@
+import re
 import sys
 from importlib.metadata import version
 from pathlib import Path
@@ -185,12 +186,15 @@ class ConsoleReporter(ReporterInterface):
 
 Guidance for Claude Code (and other AI assistants) working in this repository.
 
-This app is built on the **nexus-kit** framework. Its API, the bootstrap pattern and the
-gotchas are in `.ai/nexus-kit.md` — read it before touching DI, config or the composition
-root (`app/config/di.py`). Keep this file thin: put engineering discipline in `.ai/`
-and only repo-specific facts here.
+This app is built on the **nexus-kit** framework. The framework's API, the bootstrap
+pattern and the gotchas live in the guides under `.ai/` — read them before touching DI,
+config or the composition root (`app/config/di.py`). Every installed nexus-kit package
+maintains its own guide there: after adding, upgrading or removing one, run
+`nexus-kit sync-ai`. Keep this file thin: put engineering discipline in `.ai/` and only
+repo-specific facts here.
 """,
     ".ai/nexus-kit.md": """\
+<!-- nexus-kit sync-ai: nexus-kit {{NEXUS_REF}} — generated; refresh with `nexus-kit sync-ai`, do not edit by hand -->
 # nexus-kit — quick reference (how to build an app on this framework)
 
 Compact cheat-sheet for the **nexus-kit** framework (PyPI `nexus-kit`, import
@@ -274,6 +278,15 @@ EXTERNAL files are copied next to the binary by `build` (`resources/`,
 `.env.example`), read via `Root.external(...)`. The real `.env` ships ONLY with
 `nexus-kit build --env`. For reproducible builds: `uv add --dev pyinstaller`.
 Frozen targets need Windows 10+ or any modern linux/macos (Python 3.12 floor).
+
+## Satellites (nexus-kit-* packages)
+
+The kernel stays thin; integrations live in satellite packages (`nexus-kit-fastapi`,
+...). Every satellite ships its own AI guide inside its wheel. After `uv add`,
+upgrade or removal of ANY nexus-kit package, run **`nexus-kit sync-ai`** from the app
+root: it mirrors each installed package's guide into `.ai/<dist-name>.md` and
+refreshes this file. Managed files carry the header stamp above; your own `.ai/*.md`
+files are never touched.
 
 ## What nexus does NOT provide (you hand-roll these)
 
@@ -469,6 +482,91 @@ def _build(copy_env: bool) -> None:
     print(f"  Done: dist/ -> {', '.join(built)}")
 
 
+# --- sync-ai: mirror the AI guides of installed nexus-kit packages into .ai/ ---
+#
+# pip/uv have no post-install hooks, so a freshly installed satellite cannot
+# announce itself to the app's AI docs. `nexus-kit sync-ai` is the explicit
+# ritual instead: every satellite ships `<package>/.ai/guide.md` inside its
+# wheel, and this command mirrors those into the app's `.ai/` — plus refreshes
+# the kernel cheat sheet to the installed kernel version. Managed files are
+# recognized by the stamp; anything unstamped is user-owned and untouchable.
+
+_SYNC_STAMP = re.compile(r"^<!-- nexus-kit sync-ai: (?P<dist>\S+) (?P<version>\S+) ")
+
+
+def _stamp(dist: str, dist_version: str) -> str:
+    return (
+        f"<!-- nexus-kit sync-ai: {dist} {dist_version} — generated; "
+        "refresh with `nexus-kit sync-ai`, do not edit by hand -->\n"
+    )
+
+
+def _installed_ai_guides() -> dict[str, tuple[str, str]]:
+    """dist name -> (version, guide text) for every installed distribution
+    shipping an embedded AI guide (`<package>/.ai/guide.md` in its wheel)."""
+    from importlib.metadata import distributions
+
+    guides: dict[str, tuple[str, str]] = {}
+    for dist in distributions():
+        for file in dist.files or []:
+            if file.parts[-2:] == (".ai", "guide.md"):
+                located = Path(str(file.locate()))
+                if located.is_file():
+                    guides[dist.metadata["Name"]] = (
+                        dist.version,
+                        located.read_text(encoding="utf-8"),
+                    )
+                break
+    return guides
+
+
+def _sync_ai() -> None:
+    if not Path("main.py").exists():
+        print("Error: main.py not found — run `nexus-kit sync-ai` from the application root")
+        sys.exit(1)
+
+    ai_dir = Path(".ai")
+    ai_dir.mkdir(exist_ok=True)
+
+    guides = {
+        name: (dist_version, _stamp(name, dist_version) + text)
+        for name, (dist_version, text) in _installed_ai_guides().items()
+    }
+    # The kernel's contribution is the app-facing cheat sheet (stamp is part of
+    # the template), not its repo guide — and it always wins the "nexus-kit" slot.
+    nexus_version = version("nexus-kit")
+    guides["nexus-kit"] = (
+        nexus_version,
+        _TEMPLATES[".ai/nexus-kit.md"].replace("{{NEXUS_REF}}", nexus_version),
+    )
+
+    for name, (dist_version, content) in sorted(guides.items()):
+        path = ai_dir / f"{name}.md"
+        if path.exists():
+            first_line = path.read_text(encoding="utf-8").split("\n", 1)[0]
+            if not _SYNC_STAMP.match(first_line):
+                print(f"  skip {path} (no sync-ai stamp — user-owned)")
+                continue
+            if path.read_text(encoding="utf-8") == content:
+                continue
+            path.write_text(content, encoding="utf-8")
+            print(f"  updated {path} ({name} {dist_version})")
+        else:
+            path.write_text(content, encoding="utf-8")
+            print(f"  created {path} ({name} {dist_version})")
+
+    for path in sorted(ai_dir.glob("*.md")):
+        if path.stem in guides:
+            continue
+        match = _SYNC_STAMP.match(path.read_text(encoding="utf-8").split("\n", 1)[0])
+        if match and match["dist"] == path.stem:
+            path.unlink()
+            print(f"  removed {path} ({match['dist']} is no longer installed)")
+
+    print("")
+    print("  .ai/ is in sync with the installed nexus-kit packages.")
+
+
 def main() -> None:
     args = sys.argv[1:]
     if len(args) >= 2 and args[0] == "new":
@@ -477,9 +575,12 @@ def main() -> None:
         _freeze(args[1] if len(args) > 1 else None)
     elif len(args) >= 1 and args[0] == "build":
         _build(copy_env="--env" in args[1:])
+    elif len(args) >= 1 and args[0] == "sync-ai":
+        _sync_ai()
     else:
         print("Usage:")
         print("  nexus-kit new <app-name>     scaffold a new application")
         print("  nexus-kit freeze [name]      generate the PyInstaller spec (app.spec)")
         print("  nexus-kit build [--env]      clean-build dist/ from app.spec; --env ships your real .env")
+        print("  nexus-kit sync-ai            mirror installed nexus-kit packages' AI guides into .ai/")
         sys.exit(1)

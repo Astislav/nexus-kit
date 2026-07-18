@@ -3,6 +3,23 @@
 All notable changes to nexus-kit. Versioning: [semver](https://semver.org/) —
 in 0.x, breaking changes bump the minor version.
 
+## [0.4.10] — 2026-07-18
+
+- **`nexus-kit sync-ai`** — installed satellites now reach the app's AI
+  docs. pip/uv have no post-install hooks, so a freshly installed
+  satellite could never announce itself to `CLAUDE.md`/`.ai/`. The new
+  command mirrors the AI guide every satellite ships inside its wheel
+  (`<package>/.ai/guide.md`) into the app's `.ai/<dist-name>.md`, refreshes
+  the kernel cheat sheet to the installed version (previously it silently
+  went stale after upgrades), and removes guides of uninstalled packages.
+  Managed files carry a header stamp; unstamped `.ai/*.md` files are
+  user-owned and never touched.
+- Scaffolded `CLAUDE.md` now points at the `.ai/` directory (not one
+  file) and names the sync-ai ritual — installing a satellite no longer
+  requires editing `CLAUDE.md` at all. The cheat sheet documents the
+  same ritual, so an AI assistant that installs a satellite fetches its
+  own documentation for the next step.
+
 ## [0.4.9] — 2026-07-18
 
 - **Scaffolded `main.py` survives windowed builds.** `faulthandler.enable()`

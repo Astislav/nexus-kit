@@ -104,6 +104,10 @@ The package ships a compact machine-oriented reference —
 the HttpService contract, the `Injected` bridge, and the anti-patterns to
 avoid. Point your agent at it before it touches the HTTP layer.
 
+The guide also ships inside the wheel: after installing this package, run
+`nexus-kit sync-ai` from your app root and it lands in your app's
+`.ai/nexus-kit-fastapi.md`, where your assistant reads it automatically.
+
 ## License
 
 MIT © Astislav Bozhevolnov

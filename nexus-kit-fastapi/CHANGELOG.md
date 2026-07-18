@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3] — 2026-07-18
+
+- The AI guide (`.ai/guide.md`) now ships inside the wheel as
+  `nexus_kit_fastapi/.ai/guide.md` — `nexus-kit sync-ai` (nexus-kit
+  0.4.10+) discovers it there and mirrors it into the consumer app's
+  `.ai/nexus-kit-fastapi.md`, version-matched to the installed package.
+
 ## [0.2.2] — 2026-07-18
 
 External review round; both cancellation edges reproduced before fixing.

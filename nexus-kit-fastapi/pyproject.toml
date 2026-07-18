@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nexus-kit-fastapi"
-version = "0.2.2"
+version = "0.2.3"
 description = "FastAPI + uvicorn as a nexus-kit lifecycle service, with a Depends bridge into the nexus container."
 readme = "README.md"
 license = { text = "MIT" }
@@ -43,3 +43,9 @@ Changelog = "https://github.com/Astislav/nexus/blob/master/nexus-kit-fastapi/CHA
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/nexus_kit_fastapi"]
+
+[tool.hatch.build.targets.wheel.force-include]
+# The AI guide ships inside the wheel: `nexus-kit sync-ai` in a consumer app
+# discovers installed packages by exactly this embedded file and mirrors it
+# into the app's .ai/ directory.
+".ai/guide.md" = "nexus_kit_fastapi/.ai/guide.md"

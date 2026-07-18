@@ -442,9 +442,21 @@ Two machine-oriented references ship with the framework:
   NOT to do. Point your agent at it when working in this repo or on apps
   built with nexus-kit.
 - `nexus-kit new` generates the same knowledge into every scaffolded app:
-  a `CLAUDE.md` pointing at `.ai/nexus-kit.md` — a self-contained cheat
-  sheet pinned to the installed framework version, so an AI assistant in a
-  consumer project never needs to read the framework source.
+  a `CLAUDE.md` pointing at the guides under `.ai/`, starting with
+  `.ai/nexus-kit.md` — a self-contained cheat sheet pinned to the installed
+  framework version, so an AI assistant in a consumer project never needs
+  to read the framework source.
+
+The guides stay in sync with what is actually installed: every satellite
+package ships its own AI guide inside its wheel, and
+
+```bash
+nexus-kit sync-ai   # after adding, upgrading or removing any nexus-kit package
+```
+
+mirrors each installed package's guide into the app's `.ai/<dist-name>.md`
+(and refreshes the kernel cheat sheet). Managed files carry a header stamp;
+your own `.ai/*.md` files are never touched.
 
 ## License
 

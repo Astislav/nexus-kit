@@ -32,6 +32,9 @@ def test_scaffold_files_placeholders_and_pin(tmp_path, monkeypatch):
     gitignore = (proj / ".gitignore").read_text(encoding="utf-8")
     assert ".env" in gitignore and ".venv/" in gitignore
 
+    claude_md = (proj / "CLAUDE.md").read_text(encoding="utf-8")
+    assert ".ai/" in claude_md and "sync-ai" in claude_md  # points at the directory, not one file
+
 
 def test_refuses_to_overwrite_existing_directory(tmp_path, monkeypatch):
     scaffold(tmp_path, monkeypatch, "dup")
@@ -153,6 +156,79 @@ def test_build_cleans_stale_dist(tmp_path, monkeypatch):
     monkeypatch.setattr(cli, "_run_pyinstaller", run, raising=True)
     build(proj, monkeypatch)
     assert not (proj / "dist" / "old-garbage.exe").exists()
+
+
+def sync_ai(proj, monkeypatch):
+    monkeypatch.chdir(proj)
+    monkeypatch.setattr(sys, "argv", ["nexus-kit", "sync-ai"])
+    cli.main()
+
+
+def test_sync_ai_mirrors_satellite_guides_and_stamps_them(tmp_path, monkeypatch):
+    proj = scaffold(tmp_path, monkeypatch, "synced")
+    monkeypatch.setattr(
+        cli, "_installed_ai_guides",
+        lambda: {"nexus-kit-fastapi": ("0.9.9", "# fastapi guide\ncontract details\n")},
+    )
+    sync_ai(proj, monkeypatch)
+
+    mirrored = (proj / ".ai" / "nexus-kit-fastapi.md").read_text(encoding="utf-8")
+    assert mirrored.startswith("<!-- nexus-kit sync-ai: nexus-kit-fastapi 0.9.9 ")
+    assert "# fastapi guide" in mirrored
+
+
+def test_sync_ai_refreshes_on_upgrade_and_removes_uninstalled(tmp_path, monkeypatch):
+    proj = scaffold(tmp_path, monkeypatch, "moving")
+    monkeypatch.setattr(
+        cli, "_installed_ai_guides", lambda: {"nexus-kit-fastapi": ("0.9.9", "old contract\n")}
+    )
+    sync_ai(proj, monkeypatch)
+    monkeypatch.setattr(
+        cli, "_installed_ai_guides", lambda: {"nexus-kit-fastapi": ("1.0.0", "new contract\n")}
+    )
+    sync_ai(proj, monkeypatch)
+    mirrored = (proj / ".ai" / "nexus-kit-fastapi.md").read_text(encoding="utf-8")
+    assert "1.0.0" in mirrored.split("\n")[0]
+    assert "new contract" in mirrored and "old contract" not in mirrored
+
+    monkeypatch.setattr(cli, "_installed_ai_guides", lambda: {})
+    sync_ai(proj, monkeypatch)
+    assert not (proj / ".ai" / "nexus-kit-fastapi.md").exists()  # uninstalled -> gone
+    assert (proj / ".ai" / "nexus-kit.md").exists()  # the kernel cheat sheet stays
+
+
+def test_sync_ai_never_touches_unstamped_files(tmp_path, monkeypatch):
+    proj = scaffold(tmp_path, monkeypatch, "owned")
+    (proj / ".ai" / "notes.md").write_text("my notes\n", encoding="utf-8")
+    (proj / ".ai" / "nexus-kit-fastapi.md").write_text("hand-written, no stamp\n", encoding="utf-8")
+    monkeypatch.setattr(
+        cli, "_installed_ai_guides", lambda: {"nexus-kit-fastapi": ("0.9.9", "packaged guide\n")}
+    )
+    sync_ai(proj, monkeypatch)
+
+    assert (proj / ".ai" / "notes.md").read_text(encoding="utf-8") == "my notes\n"
+    assert (proj / ".ai" / "nexus-kit-fastapi.md").read_text(encoding="utf-8") == "hand-written, no stamp\n"
+
+
+def test_sync_ai_restores_a_stale_kernel_cheat_sheet(tmp_path, monkeypatch):
+    proj = scaffold(tmp_path, monkeypatch, "healed")
+    sheet = proj / ".ai" / "nexus-kit.md"
+    stamp_line = sheet.read_text(encoding="utf-8").split("\n", 1)[0]
+    sheet.write_text(stamp_line + "\nstale body\n", encoding="utf-8")
+
+    monkeypatch.setattr(cli, "_installed_ai_guides", lambda: {})
+    sync_ai(proj, monkeypatch)
+
+    healed = sheet.read_text(encoding="utf-8")
+    assert "stale body" not in healed
+    assert "## Bootstrap" in healed  # the template body is back, at the installed version
+
+
+def test_sync_ai_refuses_outside_an_app(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["nexus-kit", "sync-ai"])
+    with pytest.raises(SystemExit):
+        cli.main()
 
 
 def test_generated_app_survives_windowed_mode_without_stderr(tmp_path, monkeypatch):
