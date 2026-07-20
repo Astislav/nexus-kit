@@ -190,8 +190,8 @@ This app is built on the **nexus-kit** framework. The framework's API, the boots
 pattern and the gotchas live in the guides under `.ai/` — read them before touching DI,
 config or the composition root (`app/config/di.py`). Every installed nexus-kit package
 maintains its own guide there: after adding, upgrading or removing one, run
-`nexus-kit sync-ai`. Keep this file thin: put engineering discipline in `.ai/` and only
-repo-specific facts here.
+`uv run nexus-kit sync-ai`. Keep this file thin: put engineering discipline in `.ai/`
+and only repo-specific facts here.
 """,
     ".ai/nexus-kit.md": """\
 <!-- nexus-kit sync-ai: nexus-kit {{NEXUS_REF}} — generated; refresh with `nexus-kit sync-ai`, do not edit by hand -->
@@ -283,10 +283,12 @@ Frozen targets need Windows 10+ or any modern linux/macos (Python 3.12 floor).
 
 The kernel stays thin; integrations live in satellite packages (`nexus-kit-fastapi`,
 ...). Every satellite ships its own AI guide inside its wheel. After `uv add`,
-upgrade or removal of ANY nexus-kit package, run **`nexus-kit sync-ai`** from the app
-root: it mirrors each installed package's guide into `.ai/<dist-name>.md` and
-refreshes this file. Managed files carry the header stamp above; your own `.ai/*.md`
-files are never touched.
+upgrade or removal of ANY nexus-kit package, run **`uv run nexus-kit sync-ai`** from
+the app root (via `uv run` so the project environment is the one scanned): it mirrors
+each installed `nexus-kit-*` package's guide into `.ai/<dist-name>.md` and refreshes
+this file. Managed files carry the header stamp above; your own `.ai/*.md` files are
+never touched. A plain run only creates/updates; add `--prune` to remove guides of
+packages you have uninstalled.
 
 ## What nexus does NOT provide (you hand-roll these)
 
@@ -466,13 +468,17 @@ def _build(copy_env: bool) -> None:
     if Path("resources").is_dir():
         shutil.copytree("resources", Path("dist") / "resources")
         print("  copied resources/ next to the binary")
+    shipped_real_env = False
     if copy_env:
         if Path(".env").exists():
             shutil.copy2(".env", Path("dist") / ".env")
             print("  copied .env next to the binary (--env: it may contain secrets — ship deliberately)")
+            shipped_real_env = True
         else:
-            print("  --env requested but .env not found — skipped")
-    elif Path(".env.example").exists():
+            # --env is an explicit intent to ship config; an empty dist/ would
+            # be worse than the safe default, so fall back to the template.
+            print("  WARNING: --env requested but .env not found — shipping .env.example instead")
+    if not shipped_real_env and Path(".env.example").exists():
         shutil.copy2(".env.example", Path("dist") / ".env.example")
         print("  copied .env.example (the binary reads .env next to itself — fill it on the target machine;")
         print("  use `nexus-kit build --env` to ship your real .env deliberately)")
@@ -490,8 +496,23 @@ def _build(copy_env: bool) -> None:
 # wheel, and this command mirrors those into the app's `.ai/` — plus refreshes
 # the kernel cheat sheet to the installed kernel version. Managed files are
 # recognized by the stamp; anything unstamped is user-owned and untouchable.
+#
+# Three things this is careful about:
+#   1. It scans the APPLICATION's environment (the .venv beside main.py), not
+#      the interpreter running the CLI — so `nexus-kit` installed as a global
+#      uv tool still sees the satellites in the project venv, instead of seeing
+#      an empty world and "removing" every guide.
+#   2. It mirrors guides ONLY from the `nexus-kit-*` namespace — an arbitrary
+#      (possibly transitive) dependency shipping a `.ai/guide.md` must not get
+#      a write channel into files an AI assistant reads.
+#   3. It never deletes without an explicit `--prune`; a plain run only
+#      creates/updates.
 
 _SYNC_STAMP = re.compile(r"^<!-- nexus-kit sync-ai: (?P<dist>\S+) (?P<version>\S+) ")
+
+# The pre-0.4.10 scaffold wrote this file with no stamp; it is unmistakably ours,
+# so sync-ai adopts and refreshes it instead of treating it as user-owned.
+_LEGACY_KERNEL_SHEET_HEADER = "# nexus-kit — quick reference"
 
 
 def _stamp(dist: str, dist_version: str) -> str:
@@ -501,36 +522,76 @@ def _stamp(dist: str, dist_version: str) -> str:
     )
 
 
-def _installed_ai_guides() -> dict[str, tuple[str, str]]:
-    """dist name -> (version, guide text) for every installed distribution
-    shipping an embedded AI guide (`<package>/.ai/guide.md` in its wheel)."""
+def _is_nexus_kit_namespace(dist_name: str) -> bool:
+    normalized = re.sub(r"[-_.]+", "-", dist_name).lower()
+    return normalized == "nexus-kit" or normalized.startswith("nexus-kit-")
+
+
+def _app_site_packages() -> Path | None:
+    """The application venv's site-packages (the env that will RUN the app),
+    or None if there is no `.venv` beside main.py to introspect."""
+    venv = Path(".venv")
+    if not venv.is_dir():
+        return None
+    candidates = [venv / "Lib" / "site-packages"]  # Windows layout
+    candidates += sorted(venv.glob("lib/python*/site-packages"))  # POSIX layout
+    for site in candidates:
+        if site.is_dir():
+            return site
+    return None
+
+
+def _installed_ai_guides(search_path: list[str] | None) -> dict[str, tuple[str, str]]:
+    """dist name -> (version, guide text) for every installed `nexus-kit-*`
+    distribution shipping an embedded AI guide (`<package>/.ai/guide.md`).
+
+    `search_path` selects the environment to scan (the app venv's
+    site-packages); None falls back to the running interpreter's sys.path."""
     from importlib.metadata import distributions
 
     guides: dict[str, tuple[str, str]] = {}
-    for dist in distributions():
+    for dist in distributions(path=search_path) if search_path else distributions():
+        name = dist.metadata["Name"]
+        if not _is_nexus_kit_namespace(name):
+            continue  # not ours — never a write channel into AI-read files
         for file in dist.files or []:
             if file.parts[-2:] == (".ai", "guide.md"):
                 located = Path(str(file.locate()))
                 if located.is_file():
-                    guides[dist.metadata["Name"]] = (
-                        dist.version,
-                        located.read_text(encoding="utf-8"),
-                    )
+                    guides[name] = (dist.version, located.read_text(encoding="utf-8"))
                 break
     return guides
 
 
-def _sync_ai() -> None:
+def _managed_or_legacy(path: Path, name: str) -> bool:
+    """True if sync-ai owns this file: it carries our stamp, or it is the
+    known pre-0.4.10 generated kernel cheat sheet (which had no stamp)."""
+    head = path.read_text(encoding="utf-8").split("\n", 1)[0]
+    if _SYNC_STAMP.match(head):
+        return True
+    return name == "nexus-kit" and head.startswith(_LEGACY_KERNEL_SHEET_HEADER)
+
+
+def _sync_ai(prune: bool) -> None:
     if not Path("main.py").exists():
         print("Error: main.py not found — run `nexus-kit sync-ai` from the application root")
         sys.exit(1)
+
+    site = _app_site_packages()
+    if site is not None:
+        print(f"  scanning the application environment: {site}")
+        search_path: list[str] | None = [str(site)]
+    else:
+        print("  no .venv found next to main.py — scanning the current interpreter")
+        print("  (run `uv run nexus-kit sync-ai` so the project environment is scanned)")
+        search_path = None
 
     ai_dir = Path(".ai")
     ai_dir.mkdir(exist_ok=True)
 
     guides = {
         name: (dist_version, _stamp(name, dist_version) + text)
-        for name, (dist_version, text) in _installed_ai_guides().items()
+        for name, (dist_version, text) in _installed_ai_guides(search_path).items()
     }
     # The kernel's contribution is the app-facing cheat sheet (stamp is part of
     # the template), not its repo guide — and it always wins the "nexus-kit" slot.
@@ -543,8 +604,7 @@ def _sync_ai() -> None:
     for name, (dist_version, content) in sorted(guides.items()):
         path = ai_dir / f"{name}.md"
         if path.exists():
-            first_line = path.read_text(encoding="utf-8").split("\n", 1)[0]
-            if not _SYNC_STAMP.match(first_line):
+            if not _managed_or_legacy(path, name):
                 print(f"  skip {path} (no sync-ai stamp — user-owned)")
                 continue
             if path.read_text(encoding="utf-8") == content:
@@ -555,16 +615,38 @@ def _sync_ai() -> None:
             path.write_text(content, encoding="utf-8")
             print(f"  created {path} ({name} {dist_version})")
 
+    stale = []
     for path in sorted(ai_dir.glob("*.md")):
         if path.stem in guides:
             continue
         match = _SYNC_STAMP.match(path.read_text(encoding="utf-8").split("\n", 1)[0])
         if match and match["dist"] == path.stem:
+            stale.append(path)
+
+    for path in stale:
+        if prune:
             path.unlink()
-            print(f"  removed {path} ({match['dist']} is no longer installed)")
+            print(f"  pruned {path} (its package is no longer installed)")
+        else:
+            print(f"  stale {path} (package not installed — `nexus-kit sync-ai --prune` to remove)")
 
     print("")
     print("  .ai/ is in sync with the installed nexus-kit packages.")
+
+
+def _reject_unknown_flags(flags: list[str], allowed: set[str]) -> None:
+    unknown = [a for a in flags if a.startswith("-") and a not in allowed]
+    if unknown:
+        print(f"Error: unknown option(s): {' '.join(unknown)}")
+        sys.exit(1)
+
+
+def _usage() -> None:
+    print("Usage:")
+    print("  nexus-kit new <app-name>     scaffold a new application")
+    print("  nexus-kit freeze [name]      generate the PyInstaller spec (app.spec)")
+    print("  nexus-kit build [--env]      clean-build dist/ from app.spec; --env ships your real .env")
+    print("  nexus-kit sync-ai [--prune]  mirror installed nexus-kit packages' AI guides into .ai/")
 
 
 def main() -> None:
@@ -574,13 +656,11 @@ def main() -> None:
     elif len(args) >= 1 and args[0] == "freeze":
         _freeze(args[1] if len(args) > 1 else None)
     elif len(args) >= 1 and args[0] == "build":
+        _reject_unknown_flags(args[1:], {"--env"})
         _build(copy_env="--env" in args[1:])
     elif len(args) >= 1 and args[0] == "sync-ai":
-        _sync_ai()
+        _reject_unknown_flags(args[1:], {"--prune"})
+        _sync_ai(prune="--prune" in args[1:])
     else:
-        print("Usage:")
-        print("  nexus-kit new <app-name>     scaffold a new application")
-        print("  nexus-kit freeze [name]      generate the PyInstaller spec (app.spec)")
-        print("  nexus-kit build [--env]      clean-build dist/ from app.spec; --env ships your real .env")
-        print("  nexus-kit sync-ai            mirror installed nexus-kit packages' AI guides into .ai/")
+        _usage()
         sys.exit(1)

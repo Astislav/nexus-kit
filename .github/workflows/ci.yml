@@ -59,6 +59,24 @@ jobs:
           echo "$out" | grep -q "frozen-and-loaded" || { echo "Root.external did not read .env from the executable dir"; exit 1; }
           echo "$out" | grep -q "tick #1" || { echo "ticker did not tick"; exit 1; }
           echo "$out" | grep -q "stopped after" || { echo "lifecycle did not stop cleanly"; exit 1; }
+      - name: sync-ai from a global tool scans the app venv, not the tool env
+        # The review's flagship sync-ai bug: a `nexus-kit` whose OWN environment
+        # lacks the satellite must still discover it in the APP's .venv — else it
+        # "removes" every guide (delete/recreate ping-pong). The CLI lives in an
+        # isolated core-only env; the app carries the satellite in its own .venv.
+        shell: bash
+        run: |
+          TOOLENV="$RUNNER_TEMP/toolenv"
+          uv venv "$TOOLENV"
+          uv pip install --python "$TOOLENV" ./nexus-kit
+          BIN="$TOOLENV/bin/nexus-kit"; [ -f "$BIN" ] || BIN="$TOOLENV/Scripts/nexus-kit"
+          uv run nexus-kit new syncprobe
+          cd syncprobe
+          uv venv
+          uv pip install --python .venv "$GITHUB_WORKSPACE/nexus-kit" "$GITHUB_WORKSPACE/nexus-kit-fastapi"
+          "$BIN" sync-ai
+          test -f .ai/nexus-kit-fastapi.md || { echo "global-tool sync-ai did not find the satellite in the app venv"; exit 1; }
+          grep -q "nexus-kit-fastapi" .ai/nexus-kit-fastapi.md
       - name: Windowed build must start and exit cleanly (Windows)
         # console=False means sys.stderr (and stdout) are None — the class of
         # startup crash a console build can never catch. We only assert a

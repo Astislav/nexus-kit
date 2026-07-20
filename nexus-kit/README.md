@@ -451,12 +451,16 @@ The guides stay in sync with what is actually installed: every satellite
 package ships its own AI guide inside its wheel, and
 
 ```bash
-nexus-kit sync-ai   # after adding, upgrading or removing any nexus-kit package
+uv run nexus-kit sync-ai   # after adding, upgrading or removing any nexus-kit package
 ```
 
-mirrors each installed package's guide into the app's `.ai/<dist-name>.md`
-(and refreshes the kernel cheat sheet). Managed files carry a header stamp;
-your own `.ai/*.md` files are never touched.
+mirrors each installed `nexus-kit-*` package's guide into the app's
+`.ai/<dist-name>.md` (and refreshes the kernel cheat sheet). Run it via
+`uv run` so the project environment is the one scanned. Only the
+`nexus-kit-*` namespace is mirrored — an unrelated dependency shipping a
+guide is never a write channel into your AI docs. Managed files carry a
+header stamp; your own `.ai/*.md` files are never touched; a plain run
+never deletes (add `--prune` to drop guides of uninstalled packages).
 
 ## License
 

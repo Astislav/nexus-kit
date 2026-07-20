@@ -145,8 +145,8 @@ Every scaffolded app ships a `CLAUDE.md` and a version-pinned cheat sheet
 machine-oriented [`.ai/guide.md`](nexus-kit/.ai/guide.md) — API contract,
 conventions, anti-patterns — updated **in the same commit** as the API it
 describes. Satellites ship their guide **inside the wheel**: after
-`uv add nexus-kit-fastapi`, one `nexus-kit sync-ai` mirrors it into your
-app's `.ai/`, version-matched to what you installed. Point your agent at
+`uv add nexus-kit-fastapi`, one `uv run nexus-kit sync-ai` mirrors it into
+your app's `.ai/`, version-matched to what you installed. Point your agent at
 it and it builds on nexus-kit idiomatically without reading the source.
 Frameworks used to be documented for humans; this one is documented for
 the pair of you.

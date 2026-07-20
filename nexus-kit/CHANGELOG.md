@@ -3,6 +3,32 @@
 All notable changes to nexus-kit. Versioning: [semver](https://semver.org/) —
 in 0.x, breaking changes bump the minor version.
 
+## [0.4.11] — 2026-07-18
+
+Hardening pass on `sync-ai` after an external review reproduced three design
+holes in 0.4.10 (each reproduced here before fixing):
+
+- **Scans the application environment, not the CLI's interpreter.** A
+  `nexus-kit` installed as a global `uv tool` used to introspect its own
+  isolated env — it saw no satellites and then "removed" every guide as
+  uninstalled; the project's `uv run` recreated them (a delete/recreate
+  ping-pong). sync-ai now discovers packages in the app's `.venv` beside
+  `main.py`, so the global tool and `uv run` agree.
+- **Only mirrors the `nexus-kit-*` namespace.** Discovery accepted a
+  `.ai/guide.md` from ANY installed distribution — a transitive dependency
+  (or a squatter) shipping one had a write channel straight into files an
+  AI assistant reads. That is prompt injection; guides outside the
+  namespace are now ignored.
+- **Never deletes without `--prune`.** A plain run only creates/updates;
+  removing the guide of an uninstalled package is now an explicit opt-in,
+  so a mis-detected environment can never silently wipe correct files.
+- **Migrates the legacy kernel cheat sheet.** A pre-0.4.10
+  `.ai/nexus-kit.md` (no stamp) was treated as user-owned and left stale;
+  the known generated header is now recognized, adopted and refreshed.
+- `build`/`sync-ai` reject unknown flags instead of silently ignoring them;
+  `build --env` with no `.env` now warns and ships `.env.example` (0.4.10
+  left `dist/` with no config template at all).
+
 ## [0.4.10] — 2026-07-18
 
 - **`nexus-kit sync-ai`** — installed satellites now reach the app's AI
