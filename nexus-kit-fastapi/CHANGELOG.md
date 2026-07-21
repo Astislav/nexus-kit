@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.5] — 2026-07-21
+
+- Dependency bound corrected to **nexus-kit >= 0.4.12, < 0.5**. 0.2.4 pinned an
+  unbounded `>= 0.4.12`, which would let a future breaking 0.5 resolve in
+  unnoticed (in 0.x, minors may break). No runtime change.
+
 ## [0.2.4] — 2026-07-20
 
 - Requires **nexus-kit >= 0.4.12** — the kernel whose `sync-ai` mirrors this

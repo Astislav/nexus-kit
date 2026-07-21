@@ -223,6 +223,8 @@ def test_sync_ai_kernel_pin_matches_the_app_not_the_cli(tmp_path, monkeypatch):
     sheet = (proj / ".ai" / "nexus-kit.md").read_text(encoding="utf-8")
     assert sheet.startswith("<!-- nexus-kit sync-ai: nexus-kit 9.9.9 ")  # the app's version
     assert "~=9.9.9" in sheet  # the pin the agent reads, from the app env not the CLI
+    # the body is this CLI's; a mismatch must be flagged IN the file, not only on stdout
+    assert "WARNING" in sheet and "version-matched body" in sheet
 
 
 def test_sync_ai_ignores_packages_outside_the_namespace(tmp_path, monkeypatch):
@@ -285,8 +287,10 @@ def test_sync_ai_refreshes_on_upgrade(tmp_path, monkeypatch):
     assert "new contract" in mirrored and "old contract" not in mirrored
 
 
-def test_sync_ai_keeps_stale_guides_without_prune_and_removes_them_with_it(tmp_path, monkeypatch):
-    proj = scaffold(tmp_path, monkeypatch, "pruning")
+def test_sync_ai_quarantines_an_orphaned_guide_by_default(tmp_path, monkeypatch):
+    """A guide whose package is gone must leave .ai/*.md (so the assistant stops
+    reading it) but must not be deleted without --prune."""
+    proj = scaffold(tmp_path, monkeypatch, "orphaned")
     monkeypatch.setattr(
         cli, "_installed_ai_guides", lambda _p: {"nexus-kit-fastapi": ("0.9.9", "contract\n")}
     )
@@ -294,12 +298,41 @@ def test_sync_ai_keeps_stale_guides_without_prune_and_removes_them_with_it(tmp_p
     assert (proj / ".ai" / "nexus-kit-fastapi.md").exists()
 
     monkeypatch.setattr(cli, "_installed_ai_guides", lambda _p: {})
-    sync_ai(proj, monkeypatch)  # no --prune: a mis-detected environment must not delete
-    assert (proj / ".ai" / "nexus-kit-fastapi.md").exists()
+    sync_ai(proj, monkeypatch)  # no --prune
+    assert not (proj / ".ai" / "nexus-kit-fastapi.md").exists()          # out of the read path
+    assert (proj / ".ai" / "nexus-kit-fastapi.md.untrusted").exists()    # but preserved
+    assert (proj / ".ai" / "nexus-kit.md").exists()                      # the kernel cheat sheet stays
 
-    sync_ai(proj, monkeypatch, "--prune")  # explicit intent
+
+def test_sync_ai_prune_deletes_instead_of_quarantining(tmp_path, monkeypatch):
+    proj = scaffold(tmp_path, monkeypatch, "pruning")
+    monkeypatch.setattr(
+        cli, "_installed_ai_guides", lambda _p: {"nexus-kit-fastapi": ("0.9.9", "contract\n")}
+    )
+    sync_ai(proj, monkeypatch, "--trust", "nexus-kit-fastapi")
+
+    monkeypatch.setattr(cli, "_installed_ai_guides", lambda _p: {})
+    sync_ai(proj, monkeypatch, "--prune")
     assert not (proj / ".ai" / "nexus-kit-fastapi.md").exists()
-    assert (proj / ".ai" / "nexus-kit.md").exists()  # the kernel cheat sheet stays
+    assert not (proj / ".ai" / "nexus-kit-fastapi.md.untrusted").exists()  # deleted for real
+
+
+def test_sync_ai_quarantines_an_installed_but_untrusted_guide(tmp_path, monkeypatch):
+    """The review's scenario: a guide auto-mirrored by 0.4.10/0.4.11 (before the
+    trust gate) whose package is still installed but not on the trust list must
+    be moved out of the read path, not left where the agent keeps reading it."""
+    proj = scaffold(tmp_path, monkeypatch, "leftover")
+    site = app_venv_site(proj)
+    write_fake_dist(site, "nexus-kit-fastapi", "0.2.4", "# packaged guide\n")
+    # a stamped guide already sitting in .ai/, as an older auto-mirroring left it
+    (proj / ".ai" / "nexus-kit-fastapi.md").write_text(
+        cli._stamp("nexus-kit-fastapi", "0.2.4") + "old auto-mirrored body\n", encoding="utf-8"
+    )
+
+    sync_ai(proj, monkeypatch)  # installed, but never trusted here
+
+    assert not (proj / ".ai" / "nexus-kit-fastapi.md").exists()        # quarantined out
+    assert (proj / ".ai" / "nexus-kit-fastapi.md.untrusted").exists()  # not lost
 
 
 def test_sync_ai_never_touches_unstamped_files(tmp_path, monkeypatch):
@@ -356,14 +389,41 @@ def test_sync_ai_refuses_outside_an_app(tmp_path, monkeypatch):
         cli.main()
 
 
-def test_unknown_flags_are_rejected(tmp_path, monkeypatch):
+def test_cli_rejects_malformed_invocations(tmp_path, monkeypatch):
     proj = scaffold(tmp_path, monkeypatch, "strict")
     freeze(proj, monkeypatch)
-    for argv in (["nexus-kit", "build", "--oops"], ["nexus-kit", "sync-ai", "--nope"]):
+    for argv in (
+        ["nexus-kit"],                        # no subcommand
+        ["nexus-kit", "build", "--oops"],     # unknown flag
+        ["nexus-kit", "build", "garbage"],    # stray positional
+        ["nexus-kit", "sync-ai", "--nope"],   # unknown flag
+        ["nexus-kit", "sync-ai", "garbage"],  # stray positional
+        ["nexus-kit", "sync-ai", "--trust"],  # --trust with no package
+        ["nexus-kit", "new"],                 # missing app name
+    ):
         monkeypatch.chdir(proj)
         monkeypatch.setattr(sys, "argv", argv)
         with pytest.raises(SystemExit):
             cli.main()
+
+
+def test_build_env_without_env_or_example_reports_no_template(tmp_path, monkeypatch, capsys):
+    proj = scaffold(tmp_path, monkeypatch, "bare")
+    freeze(proj, monkeypatch)
+    (proj / ".env").unlink()
+    (proj / ".env.example").unlink()  # neither template exists
+
+    def run():
+        Path("dist").mkdir()
+        return 0
+
+    monkeypatch.setattr(cli, "_run_pyinstaller", run, raising=True)
+    build(proj, monkeypatch, "--env")
+
+    out = capsys.readouterr().out
+    assert "ships without a config template" in out  # truthful, not a silent "shipped .env.example"
+    assert not (proj / "dist" / ".env").exists()
+    assert not (proj / "dist" / ".env.example").exists()
 
 
 def test_build_env_flag_without_env_falls_back_to_example(tmp_path, monkeypatch):

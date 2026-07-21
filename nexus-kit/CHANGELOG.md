@@ -3,6 +3,31 @@
 All notable changes to nexus-kit. Versioning: [semver](https://semver.org/) —
 in 0.x, breaking changes bump the minor version.
 
+## [0.4.13] — 2026-07-21
+
+Third `sync-ai` hardening round; the CLI parser replaced wholesale. Each
+finding reproduced before fixing.
+
+- **A version-mismatch warning now lands IN the cheat sheet, not only on
+  stdout.** When a global CLI writes an app whose kernel differs, the pin is
+  the app's (correct) but the body is unavoidably the CLI's template — it may
+  describe features the app's kernel lacks. The file now carries a `WARNING`
+  comment saying so, so an agent reading it later is told, not just whoever
+  watched the terminal.
+- **Guides we no longer mirror are quarantined, not left in place.** A
+  satellite guide that is uninstalled — or installed but no longer trusted
+  (e.g. auto-mirrored by 0.4.10/0.4.11 before the trust gate) — used to be
+  merely flagged "stale" while staying in `.ai/*.md`, where the assistant kept
+  reading it. It is now moved to `<name>.md.untrusted` (out of the read path)
+  by default; `--prune` deletes it for real. No guide is ever deleted silently.
+- **Real argument parser.** The hand-rolled flag scan is replaced by
+  `argparse` subcommands: unknown flags, stray positionals, a bare `--trust`
+  with no package, and a missing `new <app-name>` are all rejected with a
+  usage message instead of being silently accepted.
+- **`build --env` with neither `.env` nor `.env.example` no longer lies.** It
+  used to announce a fallback that shipped nothing; it now states plainly that
+  `dist/` ships without a config template.
+
 ## [0.4.12] — 2026-07-20
 
 Second `sync-ai` hardening round (an external review found the edges 0.4.11

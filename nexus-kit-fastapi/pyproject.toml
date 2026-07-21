@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nexus-kit-fastapi"
-version = "0.2.4"
+version = "0.2.5"
 description = "FastAPI + uvicorn as a nexus-kit lifecycle service, with a Depends bridge into the nexus container."
 readme = "README.md"
 license = { text = "MIT" }
@@ -25,14 +25,16 @@ classifiers = [
 requires-python = ">=3.12"
 dependencies = [
     # Floor is the kernel whose `sync-ai` mirrors this package's embedded guide
-    # correctly (app-venv scan, trust gate) and excludes the yanked 0.4.10.
-    "nexus-kit>=0.4.12",
+    # correctly (app-venv scan, trust gate) and excludes the yanked 0.4.10; the
+    # upper bound keeps a future breaking 0.5 from resolving in unnoticed (0.x
+    # minors may break — see the kernel's own semver note).
+    "nexus-kit>=0.4.12,<0.5",
     "fastapi>=0.115",
     "uvicorn>=0.30",
 ]
 
 [tool.uv.sources]
-nexus-kit = { workspace = true }  # dev resolves to the sibling dir; the published wheel keeps >=0.4.12
+nexus-kit = { workspace = true }  # dev resolves to the sibling dir; the published wheel keeps >=0.4.12,<0.5
 
 [dependency-groups]
 dev = ["pytest>=8.0", "httpx>=0.27"]

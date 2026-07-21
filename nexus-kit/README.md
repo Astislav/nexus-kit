@@ -464,8 +464,9 @@ mirrored only after you trust its package once — `uv run nexus-kit sync-ai
 --trust nexus-kit-fastapi` (the kernel is trusted implicitly; the list lives
 in `.ai/trusted-guides.txt`). The `nexus-kit-*` name is only a filter, not a
 trust boundary. Managed files carry a header stamp; your own `.ai/*.md` files
-are never touched; a plain run never deletes (add `--prune` to drop guides of
-uninstalled packages).
+are never touched. A plain run never deletes: the guide of a package that is
+uninstalled or no longer trusted is quarantined to `<name>.md.untrusted` (out
+of the `*.md` files your assistant reads), and `--prune` deletes those instead.
 
 ## License
 
