@@ -148,12 +148,12 @@ discovers every installed nexus-kit package (via a declared entry point) and
 writes an **atlas** into `.nexus-kit/`: a small always-on `map.md` — indexed
 with a *read-this-when* cue per package — plus one on-demand guide each. You
 mount just the map in your own AGENTS.md; the agent opens a specific guide when
-it's relevant, so ten satellites don't bloat the context. Because the atlas is
-committed, a slipped-in guide shows up in `git diff` — it makes a bad guide
-**visible**, not blocked, so keep `.nexus-kit/` tracked and read the diff. The
-tooling never edits your AGENTS.md/CLAUDE.md, and it's plain markdown — no
-editor lock-in. Frameworks used to be documented for humans; this one is
-documented for the pair of you.
+it's relevant, so ten satellites don't bloat the context. It's plain markdown and
+the standard AGENTS.md convention — no editor lock-in — and the tooling never
+edits your AGENTS.md. (No security theatre either: a guide is just docs from a
+package you installed, and an installed package can already run code, so vet your
+dependencies as you would any code; the atlas adds no attack surface.) Frameworks
+used to be documented for humans; this one is documented for the pair of you.
 
 ## Principles
 

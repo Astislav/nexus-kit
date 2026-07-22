@@ -453,18 +453,20 @@ This discovers every installed nexus-kit package (each declares the
 - `.nexus-kit/guides/<pkg>.md` — the full guide per package, read **on demand**.
 
 Mount only the map in your own AGENTS.md — a plain `Read .nexus-kit/map.md`
-instruction works in any agent, and Claude Code can `@.nexus-kit/map.md` to
-auto-import it. The agent opens a specific guide when relevant, so more
+instruction that works in any agent (it's the standard AGENTS.md convention, no
+editor lock-in). The agent opens a specific guide when relevant, so more
 satellites don't bloat the context — progressive disclosure, the same shape as
 Skills. `nexus-kit new` sets the mount up for fresh apps; the tooling **never**
-writes your AGENTS.md/CLAUDE.md.
+writes your agent files.
 
-The atlas is committed on purpose: a new or changed guide appears in `git diff`,
-and reviewing it is the trust boundary — the entry point stops accidental or
-transitive guides, but it makes a deliberately-installed bad guide **visible,
-not blocked**, so keep `.nexus-kit/` tracked and read the diff. It trades the
-0.4.x explicit trust list for that review. `uv run nexus-kit guides --check`
-fails in CI if `.nexus-kit/` is stale.
+**This is not a security feature.** A guide is documentation shipped by a package
+you installed, and any installed package can already run arbitrary code — the
+atlas is no trust boundary and adds no attack surface. Two narrow facts, stated
+plainly: `guides` reads a guide from the package's files **without importing it**
+(building the atlas runs no package code), and the entry point keeps unrelated
+packages' stray files out. Vet your dependencies like any other code. Commit
+`.nexus-kit/` so it travels with the repo; `uv run nexus-kit guides --check`
+fails in CI if it is stale.
 
 ## License
 

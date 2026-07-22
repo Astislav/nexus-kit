@@ -22,14 +22,17 @@ replaced by a committed atlas discovered through entry points.
   package opts in explicitly. The kernel is just another provider: it ships its
   own `guide.md` in the wheel, so the CLI no longer injects a version-pinned
   template — the whole global-CLI-vs-app version-mismatch class of bug is gone.
-- **The trust boundary is `git diff`.** The atlas is committed, so a new or
-  changed guide is *visible* in review before it reaches the agent — the entry
-  point stops accidental/transitive guides, but a package you deliberately
-  install and commit is on you (this trades the 0.4.x explicit trust list for
-  review; keep `.nexus-kit/` tracked). No trust file, no quarantine, no `--prune`.
-- **Never writes CLAUDE.md/AGENTS.md.** `nexus-kit new` bootstraps an AGENTS.md
-  that mounts the map (and a placeholder `.nexus-kit/map.md` so the mount is not
-  dangling before the first run); otherwise the command only prints the mount hint.
+- **No trust machinery — it was security theatre.** A guide is documentation
+  from a package you installed, and any installed package can already run
+  arbitrary code, so the atlas is no trust boundary and adds no attack surface.
+  Two honest facts remain: `guides` reads a guide from the package's files
+  *without importing it*, and the entry point keeps unrelated packages' stray
+  files out. The 0.4.x trust file, quarantine and `--prune` are gone; commit
+  `.nexus-kit/` so it travels with the repo.
+- **Editor-neutral, never writes your agent files.** `nexus-kit new` scaffolds a
+  single `AGENTS.md` (the standard convention, no Claude/editor specifics) that
+  mounts the map, plus a placeholder `.nexus-kit/map.md` so the mount is not
+  dangling before the first run; otherwise the command only prints the mount hint.
 - **`nexus-kit guides --check`** for CI: fails if `.nexus-kit/` is out of date,
   writes nothing.
 - **One-shot migration**: `guides` removes the 0.4.x layout it finds (generated

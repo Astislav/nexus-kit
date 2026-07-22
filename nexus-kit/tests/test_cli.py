@@ -32,10 +32,10 @@ def test_scaffold_files_placeholders_and_pin(tmp_path, monkeypatch):
     gitignore = (proj / ".gitignore").read_text(encoding="utf-8")
     assert ".env" in gitignore and ".venv/" in gitignore
 
-    claude_md = (proj / "CLAUDE.md").read_text(encoding="utf-8")
-    assert "AGENTS.md" in claude_md  # thin: it points at AGENTS.md, does not itself hold guides
+    assert not (proj / "CLAUDE.md").exists()  # scaffold is editor-neutral: AGENTS.md only
     agents_md = (proj / "AGENTS.md").read_text(encoding="utf-8")
-    assert ".nexus-kit/map.md" in agents_md  # bootstrap mounts the atlas map for the user
+    assert ".nexus-kit/map.md" in agents_md            # bootstrap mounts the atlas map for the user
+    assert "claude" not in agents_md.lower()           # no editor lock-in in the generated file
 
 
 def test_refuses_to_overwrite_existing_directory(tmp_path, monkeypatch):
@@ -366,7 +366,6 @@ def test_cli_rejects_malformed_invocations(tmp_path, monkeypatch):
     proj = scaffold(tmp_path, monkeypatch, "strict")
     freeze(proj, monkeypatch)
     for argv in (
-        ["nexus-kit"],                          # no subcommand
         ["nexus-kit", "build", "--oops"],       # unknown flag
         ["nexus-kit", "build", "garbage"],      # stray positional
         ["nexus-kit", "guides", "--nope"],      # unknown flag (primary name)
@@ -377,6 +376,14 @@ def test_cli_rejects_malformed_invocations(tmp_path, monkeypatch):
         monkeypatch.setattr(sys, "argv", argv)
         with pytest.raises(SystemExit):
             cli.main()
+
+
+def test_bare_invocation_prints_a_friendly_intro(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["nexus-kit"])
+    cli.main()  # no SystemExit — a bare invocation is an intro, not an error
+    out = capsys.readouterr().out
+    assert "guides" in out and ".nexus-kit" in out  # path-B discovery: names the atlas concept
 
 
 def test_build_env_without_env_or_example_reports_no_template(tmp_path, monkeypatch, capsys):

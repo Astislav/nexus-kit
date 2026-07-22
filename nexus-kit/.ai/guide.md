@@ -7,9 +7,10 @@ Context for AI assistants working in projects built with nexus-kit
 **Keeping these guides current:** every nexus-kit package ships its own guide;
 `uv run nexus-kit guides` (re-run after `uv add`-ing, upgrading or removing any
 nexus-kit package) writes them into `.nexus-kit/` and indexes them in
-`.nexus-kit/map.md`, which the app's AGENTS.md mounts. The atlas is committed —
-the human reviews its diff, which is how a guide's contents are vetted. Treat the
-guides as the framework's machine contract; never hand-edit the generated copies.
+`.nexus-kit/map.md`, which the app's AGENTS.md mounts. The atlas is generated and
+committed so it travels with the repo — never hand-edit the copies in
+`.nexus-kit/`; re-run `nexus-kit guides` instead. Treat the guides as the
+framework's machine contract.
 
 ## What nexus-kit is
 
