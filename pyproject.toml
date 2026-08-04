@@ -2,4 +2,7 @@
 members = ["nexus-kit*"]
 
 [dependency-groups]
-dev = ["ruff>=0.15"]
+# Pin the linter to one minor so CI (which resolves fresh — uv.lock is gitignored)
+# can't drift onto a newer ruff whose new default rules fail a green tree. Same
+# reproducibility reason we pin PyInstaller. Bump deliberately, not by surprise.
+dev = ["ruff>=0.15,<0.16"]
