@@ -3,6 +3,13 @@
 All notable changes to nexus-kit. Versioning: [semver](https://semver.org/) —
 in 0.x, breaking changes bump the minor version.
 
+## [0.5.2] — 2026-07-23
+
+- **`update-ai-guides` no longer requires a `main.py`.** It refused to run unless a
+  scaffold-style `main.py` was present — but real apps have their own entry point,
+  or a library layout with none. The app root is now anchored on `pyproject.toml`
+  or `.venv/` in the current directory instead.
+
 ## [0.5.1] — 2026-07-23
 
 External review of 0.5.0; every finding reproduced against the code before fixing.

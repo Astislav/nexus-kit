@@ -397,10 +397,23 @@ def test_command_name_and_guides_alias(tmp_path, monkeypatch):
 
 
 def test_update_ai_guides_refuses_outside_an_app(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
+    monkeypatch.chdir(tmp_path)  # empty dir: no pyproject.toml, no .venv/
     monkeypatch.setattr(sys, "argv", ["nexus-kit", "update-ai-guides"])
     with pytest.raises(SystemExit):
         cli.main()
+
+
+def test_update_ai_guides_runs_without_a_main_py(tmp_path, monkeypatch):
+    """Real apps need not have a scaffold-style main.py; the app root is anchored
+    on pyproject.toml / .venv, not on main.py."""
+    proj = scaffold(tmp_path, monkeypatch, "nomain")
+    (proj / "main.py").unlink()  # e.g. a package/library layout with its own entry point
+    site = app_venv_site(proj)
+    write_fake_dist(site, "nexus-kit", "0.5.0", "# k\n")
+
+    sync_ai(proj, monkeypatch)
+
+    assert (proj / ".nexus-kit" / "map.md").exists()  # anchored on pyproject.toml, ran fine
 
 
 def test_cli_rejects_malformed_invocations(tmp_path, monkeypatch):

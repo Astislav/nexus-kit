@@ -466,7 +466,7 @@ def _when_hint(guide_text: str) -> str | None:
 
 def _app_site_packages() -> Path | None:
     """The application venv's site-packages (the env that will RUN the app),
-    or None if there is no `.venv` beside main.py to introspect."""
+    or None if there is no `.venv` in the current directory to introspect."""
     venv = Path(".venv")
     if not venv.is_dir():
         return None
@@ -647,8 +647,12 @@ def _check_atlas(desired: dict[Path, str]) -> None:
 
 
 def _build_guides(check: bool) -> None:
-    if not Path("main.py").exists():
-        print("Error: main.py not found — run `nexus-kit update-ai-guides` from the application root")
+    # The app root is the current directory. Anchor on any Python-project marker
+    # (a pyproject.toml or a .venv) rather than a scaffold-specific main.py — real
+    # apps have their own entry point, or none.
+    if not Path("pyproject.toml").exists() and not Path(".venv").is_dir():
+        print("Error: run `nexus-kit update-ai-guides` from your project root")
+        print("  (no pyproject.toml or .venv/ found in the current directory)")
         sys.exit(1)
 
     site = _app_site_packages()
@@ -656,7 +660,7 @@ def _build_guides(check: bool) -> None:
         print(f"  scanning the application environment: {site}")
         search_path: list[str] | None = [str(site)]
     else:
-        print("  no .venv found next to main.py — scanning the current interpreter")
+        print("  no .venv/ in the current directory — scanning the current interpreter")
         print("  (run `uv run nexus-kit update-ai-guides` so the project environment is scanned)")
         search_path = None
 
