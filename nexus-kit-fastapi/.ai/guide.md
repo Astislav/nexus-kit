@@ -1,4 +1,4 @@
-<!-- when: exposing an HTTP API, running FastAPI/uvicorn as a nexus service, or injecting container objects into route handlers -->
+<!-- when: exposing an HTTP API, running FastAPI/uvicorn as a nexus service, injecting container objects into route handlers, or deploying behind a reverse proxy at a sub-path -->
 # nexus-kit-fastapi — AI Agent Guide
 
 Context for AI assistants working in projects that use `nexus-kit-fastapi`
@@ -53,8 +53,34 @@ Contract:
   the signal after shutdown, killing the process mid-teardown. Opt out with
   `handle_signals = False` only if the application owns signals itself.
 - `port = 0` binds an ephemeral port; read it via `service.bound_port`.
+- `root_path` (default `""`) — see "Behind a reverse proxy at a sub-path".
 - Override `uvicorn_config(app)` for TLS/proxy-headers or to wrap the app
   in ASGI middleware (e.g. `socketio.ASGIApp`) — plain uvicorn API.
+
+## Behind a reverse proxy at a sub-path
+
+When the app is published as `https://host/apps/x/` and the proxy STRIPS
+the prefix (Traefik `stripPrefix`, nginx `location /apps/x/ { proxy_pass
+http://app/; }`), the app receives `/ping` for `/apps/x/ping`. The ASGI
+answer is `root_path`: routing stays prefix-free, URL generation adds it.
+
+- Set `self.root_path = env.HTTP_ROOT_PATH` next to host/port. It is deploy
+  config (like the port): the field defaults to `""`, the deployment sets
+  the environment variable. Do NOT hardcode the prefix in code, templates,
+  or `.env.example`.
+- Everything Starlette generates already honours it: `request.url_for(...)`,
+  `RedirectResponse(request.url_for(...))`, `/docs`, `/openapi.json`
+  (`servers: [{url: root_path}]`). Nothing to do there.
+- What breaks is every absolute path the app writes as a string: `href="/x"`
+  in templates, `fetch("/api/x")` in JS, `RedirectResponse("/")`. Route
+  them all through `request.scope["root_path"]` (or `request.url_for`);
+  hand the prefix to browser JS once (e.g. a `data-root` attribute on
+  `<html>`) and build fetch URLs from it. Never use `<base href>` for this:
+  it also rewrites `href="#…"` anchors and `url(#id)` references.
+- The host never enters the app: the proxy forwards `Host`, and the prefix
+  is the only thing the app cannot infer. For correct `https://` in
+  absolute URLs behind a proxy on another address, set uvicorn's
+  `FORWARDED_ALLOW_IPS` environment variable (uvicorn reads it itself).
 
 ## Injected — routes reach the container
 

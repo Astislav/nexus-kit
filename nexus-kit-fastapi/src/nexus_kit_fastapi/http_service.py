@@ -92,12 +92,19 @@ class HttpService(ServiceInterface):
       and the runner still stops every service. Set `handle_signals = False`
       if your application owns signal handling itself.
     - `port = 0` binds an ephemeral port; read it via `bound_port`.
+    - `root_path` is the mount prefix when a reverse proxy serves the app
+      under a sub-path and STRIPS it (`/apps/x/ping` arrives as `/ping`).
+      It is the ASGI `root_path`: routing stays prefix-free, while
+      `request.url_for(...)`, redirects built from it, and the OpenAPI/docs
+      pages generate prefixed URLs. Feed it from your Environment like host
+      and port; the default (empty) is "served at the root".
     - Override `uvicorn_config(app)` for TLS/proxy headers, or to wrap the
       app in ASGI middleware (e.g. `socketio.ASGIApp`) before serving.
     """
 
     host: str = "127.0.0.1"
     port: int = 8000
+    root_path: str = ""
     log_level: str = "info"
     handle_signals: bool = True
 
@@ -118,7 +125,9 @@ class HttpService(ServiceInterface):
 
     def uvicorn_config(self, app: FastAPI) -> uvicorn.Config:
         """Override for TLS, proxy headers, custom log config — plain uvicorn API."""
-        return uvicorn.Config(app, host=self.host, port=self.port, log_level=self.log_level)
+        return uvicorn.Config(
+            app, host=self.host, port=self.port, root_path=self.root_path, log_level=self.log_level
+        )
 
     async def start(self) -> None:
         if self._server is not None:

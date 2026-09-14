@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.0] — 2026-09-14
+
+- **`HttpService.root_path`** — the ASGI mount prefix for apps published under a
+  sub-path behind a prefix-stripping reverse proxy (`https://host/apps/x/`).
+  Same rank as `host`/`port`: feed it from your Environment, default `""`.
+  Routing stays prefix-free; `request.url_for`, redirects built from it and the
+  OpenAPI/docs pages generate prefixed URLs. Guide and README gain a "Behind a
+  reverse proxy at a sub-path" section covering what the app itself must stop
+  hardcoding (`href="/x"`, `fetch("/api/x")`, `RedirectResponse("/")`).
+
 ## [0.3.1] — 2026-07-23
 
 - **Dependency floor loosened to `nexus-kit >= 0.4.12, < 0.6`.** 0.3.0 required

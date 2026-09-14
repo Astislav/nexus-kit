@@ -3,7 +3,8 @@ import socket
 
 import httpx
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import RedirectResponse
 from injector import singleton
 
 from nexus_kit.impl import ContainerInjector, ServiceRunner
@@ -47,6 +48,56 @@ def test_full_lifecycle_serves_and_stops_cleanly():
         finally:
             await service.stop()
             await service.stop()  # idempotent
+
+    asyncio.run(scenario())
+
+
+def test_root_path_prefixes_generated_urls_but_not_routing():
+    """Behind a prefix-stripping proxy the app receives bare paths and must
+    emit prefixed ones. That is the ASGI root_path contract, so plain
+    Starlette URL generation honours it with no app-side string surgery."""
+
+    @singleton
+    class PrefixedService(HttpService):
+        port = 0
+        root_path = "/apps/probe"
+        log_level = "warning"
+
+        def create_app(self) -> FastAPI:
+            app = FastAPI()
+
+            @app.get("/where", name="where")
+            def where(request: Request):
+                return {
+                    "root_path": request.scope["root_path"],
+                    "url_for": request.url_for("where").path,
+                }
+
+            @app.get("/go")
+            def go(request: Request):
+                return RedirectResponse(request.url_for("where"), status_code=308)
+
+            return app
+
+    async def scenario():
+        container = ContainerInjector({})
+        service = container.get(PrefixedService)
+        await service.start()
+        try:
+            base = f"http://127.0.0.1:{service.bound_port}"
+            async with httpx.AsyncClient() as client:
+                where = await client.get(f"{base}/where")
+                prefixed = await client.get(f"{base}/apps/probe/where")
+                go = await client.get(f"{base}/go")
+                openapi = await client.get(f"{base}/openapi.json")
+            assert where.status_code == 200
+            assert where.json() == {"root_path": "/apps/probe", "url_for": "/apps/probe/where"}
+            assert prefixed.status_code == 404  # the proxy strips the prefix; routing never sees it
+            assert go.status_code == 308
+            assert go.headers["location"].endswith("/apps/probe/where")
+            assert openapi.json()["servers"] == [{"url": "/apps/probe"}]
+        finally:
+            await service.stop()
 
     asyncio.run(scenario())
 

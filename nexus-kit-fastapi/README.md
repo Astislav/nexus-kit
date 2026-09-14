@@ -57,6 +57,36 @@ there and `ServiceRunner` rolls the other services back. `stop()` is a
 graceful uvicorn shutdown. `port = 0` binds an ephemeral port
 (`service.bound_port` tells which — handy in tests).
 
+## Behind a reverse proxy at a sub-path
+
+Published as `https://host/apps/x/` with the proxy stripping the prefix
+(Traefik `stripPrefix`, nginx `proxy_pass http://app/;`)? The app receives
+`/ping` for `/apps/x/ping` and must emit prefixed links back. That is the
+ASGI `root_path`, and the bridge exposes it next to host and port:
+
+```python
+self.host, self.port, self.root_path = env.HOST, env.PORT, env.HTTP_ROOT_PATH
+```
+
+`HTTP_ROOT_PATH` defaults to `""` in your Environment and is set by the
+deployment (compose `environment:`, systemd, k8s) — the same class of config
+as the port, so it never lands in code, templates, or `.env.example`. Routing
+stays prefix-free; `request.url_for(...)`, redirects built from it, `/docs`
+and `/openapi.json` generate prefixed URLs on their own. Only absolute paths
+you write as strings (`href="/x"`, `fetch("/api/x")`, `RedirectResponse("/")`)
+need to go through `request.scope["root_path"]` instead.
+
+```yaml
+# compose: the prefix lives once, next to the proxy rule that strips it
+labels:
+  - traefik.http.routers.x.rule=PathPrefix(`/apps/x`)
+  - traefik.http.routers.x.middlewares=x-strip
+  - traefik.http.middlewares.x-strip.stripprefix.prefixes=/apps/x
+environment:
+  - HTTP_HOST=0.0.0.0
+  - HTTP_ROOT_PATH=/apps/x
+```
+
 ## Routes reach the container through plain `Depends`
 
 `Injected(cls)` is an ordinary FastAPI dependency that resolves `cls` from
