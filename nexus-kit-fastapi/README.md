@@ -1,7 +1,7 @@
 # nexus-kit-fastapi
 
 [![PyPI](https://img.shields.io/pypi/v/nexus-kit-fastapi)](https://pypi.org/project/nexus-kit-fastapi/)
-[![CI](https://github.com/Astislav/nexus/actions/workflows/ci.yml/badge.svg)](https://github.com/Astislav/nexus/actions/workflows/ci.yml)
+[![CI](https://github.com/Astislav/nexus-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/Astislav/nexus-kit/actions/workflows/ci.yml)
 
 FastAPI + uvicorn as a [nexus-kit](https://pypi.org/project/nexus-kit/)
 lifecycle service, plus a `Depends` bridge into the nexus container.
@@ -130,7 +130,7 @@ application manages signals itself. The nexus core remains signal-free.
 ## For AI assistants
 
 The package ships a compact machine-oriented reference —
-[`.ai/guide.md`](https://github.com/Astislav/nexus/blob/master/nexus-kit-fastapi/.ai/guide.md):
+[`.ai/guide.md`](https://github.com/Astislav/nexus-kit/blob/master/nexus-kit-fastapi/.ai/guide.md):
 the HttpService contract, the `Injected` bridge, and the anti-patterns to
 avoid. Point your agent at it before it touches the HTTP layer.
 

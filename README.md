@@ -1,7 +1,7 @@
 # nexus-kit
 
 [![PyPI](https://img.shields.io/pypi/v/nexus-kit)](https://pypi.org/project/nexus-kit/)
-[![CI](https://github.com/Astislav/nexus/actions/workflows/ci.yml/badge.svg)](https://github.com/Astislav/nexus/actions/workflows/ci.yml)
+[![CI](https://github.com/Astislav/nexus-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/Astislav/nexus-kit/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 A minimal application kernel for long-lived Python apps: one entry point,

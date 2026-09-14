@@ -706,7 +706,7 @@ def _print_intro() -> None:
     print("committed, so the change lands in a diff you can review (it writes in place, so nothing")
     print("forces review first — but the guides change only when you run this).")
     print("")
-    print("Docs: https://github.com/Astislav/nexus")
+    print("Docs: https://github.com/Astislav/nexus-kit")
 
 
 def main() -> None:

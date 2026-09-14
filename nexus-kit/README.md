@@ -2,8 +2,8 @@
 
 [![PyPI](https://img.shields.io/pypi/v/nexus-kit)](https://pypi.org/project/nexus-kit/)
 [![Python](https://img.shields.io/pypi/pyversions/nexus-kit)](https://pypi.org/project/nexus-kit/)
-[![CI](https://github.com/Astislav/nexus/actions/workflows/ci.yml/badge.svg)](https://github.com/Astislav/nexus/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green)](https://github.com/Astislav/nexus/blob/master/LICENSE)
+[![CI](https://github.com/Astislav/nexus-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/Astislav/nexus-kit/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](https://github.com/Astislav/nexus-kit/blob/master/LICENSE)
 
 A minimal application kernel for long-lived Python apps: one entry point,
 typed config, constructor DI, logger channels, service lifecycle — and paths
@@ -11,9 +11,9 @@ that survive PyInstaller.
 
 Install [`nexus-kit`](https://pypi.org/project/nexus-kit/), import `nexus_kit`.
 
-[Source on GitHub](https://github.com/Astislav/nexus) ·
-[Issues](https://github.com/Astislav/nexus/issues) ·
-[Releases](https://github.com/Astislav/nexus/releases)
+[Source on GitHub](https://github.com/Astislav/nexus-kit) ·
+[Issues](https://github.com/Astislav/nexus-kit/issues) ·
+[Releases](https://github.com/Astislav/nexus-kit/releases)
 
 **Built for composite, long-lived apps**: a Qt desk driving hardware, a
 pygame game, a daemon, a server where HTTP is just one service among
@@ -26,7 +26,7 @@ FastAPI/Django conventions.
 
 **Why this exists, who it's for, and the honest “is this even pythonic?”
 conversation → [the repository landing
-page](https://github.com/Astislav/nexus#readme).** This page is the
+page](https://github.com/Astislav/nexus-kit#readme).** This page is the
 kernel reference: install, bootstrap, and every contract.
 
 ## Install
@@ -436,7 +436,7 @@ Domain logic, UI, data access — those belong in your app.
 ## For AI assistants
 
 The full framework guide ships inside the wheel:
-[`.ai/guide.md`](https://github.com/Astislav/nexus/blob/master/nexus-kit/.ai/guide.md)
+[`.ai/guide.md`](https://github.com/Astislav/nexus-kit/blob/master/nexus-kit/.ai/guide.md)
 — API, conventions, lifecycle guarantees, what NOT to do. In a consumer app it is
 not read from the repo; it lives in a local **atlas** under `.nexus-kit/`:
 
