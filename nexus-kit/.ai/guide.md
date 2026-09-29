@@ -13,6 +13,8 @@ nexus-kit is a minimal Python application framework. It provides:
 - `ContainerInjector` — a concrete DI container implementation (thin wrapper over the `injector` library)
 - `ServiceInterface` / `ServiceRunner` — lifecycle: ordered start, guaranteed reverse-order stop of long-lived services (sync and async)
 - `Root` — a path utility that works in dev and PyInstaller-bundled environments
+  (and under pytest: an entry point installed in `.venv` is ignored, the anchor
+  falls back to the project directory holding `pyproject.toml`)
 - A logging base (`NamedLogger` / `StdoutHandler` / `LogFormatter`), DI-injectable
 - A scaffolding CLI: `nexus-kit new <app-name>`; packaging via `nexus-kit freeze`
   (generates `app.spec`: BUNDLED↔`Root.internal`) + `nexus-kit build` (clean
@@ -102,6 +104,11 @@ class Environment(EnvironmentInterface):
 
 Pydantic BaseSettings rules apply: values come from environment variables and the `.env` file.
 Pass the `.env` path via `Root.external(".env")`.
+
+Under pytest `Root` resolves to the project directory, so `Root.external(".env")` is the
+developer's REAL `.env`. Tests that must not depend on it construct the Environment with
+`_env_file=None` and explicit values. Do not resolve app files via `Path(__file__)` to work
+around Root in tests — Root already gives the same paths in tests as in `python main.py`.
 
 ## How to register services in DI
 

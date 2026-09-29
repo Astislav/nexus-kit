@@ -178,6 +178,13 @@ In dev the anchor is the entry script's directory (not the current working
 directory), so launching `python d:/apps/game/main.py` from anywhere — an IDE,
 a task scheduler, a shortcut — resolves the same paths as running it in place.
 
+When the entry script is not the app's own — `pytest`, `python -m pytest`, or
+any other console script installed into the environment — its directory is
+somewhere inside `.venv`, so it is ignored: the anchor becomes the nearest
+directory with a `pyproject.toml` at or above the working directory (the same
+directory without one). Your tests see exactly the paths `python main.py` sees
+from the project root — no `Path(__file__).parents[N]` workarounds needed.
+
 Use `external` for anything the user owns (configs, databases, output files).
 Use `internal` for assets you ship inside the bundle (templates, images, default configs).
 

@@ -3,6 +3,23 @@
 All notable changes to nexus-kit. Versioning: [semver](https://semver.org/) —
 in 0.x, breaking changes bump the minor version.
 
+## [0.5.3] — 2026-09-29
+
+- **`Root` works under pytest.** In dev `Root` anchors to the entry script's
+  directory — but under `pytest` / `python -m pytest` the entry script is pytest's
+  own, inside `.venv`, so every `Root.internal` / `Root.external` path pointed into
+  the environment. Apps worked around it with `Path(__file__).parents[N]` and
+  absolute paths in conftest. Now an entry script that belongs to the environment
+  (in `site-packages` or its scripts directory) is ignored and the anchor becomes
+  the nearest directory with a `pyproject.toml` at or above the working directory.
+  `python main.py` is unchanged; frozen builds are unchanged.
+- **Behaviour change to check:** under pytest `Root.external(".env")` now resolves
+  to your real project `.env` instead of a path that never existed. If your
+  `Environment` loads it by default, tests start reading your local settings —
+  construct it with `_env_file=None` in tests. The same fallback applies to an app
+  launched through a console script installed into its own environment: it used to
+  anchor to `.venv/Scripts` (or `bin`), now to the project directory.
+
 ## [0.5.2] — 2026-07-23
 
 - **`update-ai-guides` no longer requires a `main.py`.** It refused to run unless a
