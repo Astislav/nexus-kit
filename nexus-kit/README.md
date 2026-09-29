@@ -169,10 +169,13 @@ db     = Root.external("data", "app.db")
 html   = Root.internal("templates", "report.html")
 ```
 
-| Method | Dev (plain Python) | Bundled (PyInstaller) |
-|--------|--------------------|-----------------------|
-| `Root.external(...)` | `dir(main.py) / path` | `dir(executable) / path` |
-| `Root.internal(...)` | `dir(main.py) / path` | `_MEIPASS / path` |
+| Method | Dev (plain Python) | Under pytest / installed console script | Bundled (PyInstaller) |
+|--------|--------------------|------------------------------------------|-----------------------|
+| `Root.external(...)` | `dir(main.py) / path` | `project dir / path` | `dir(executable) / path` |
+| `Root.internal(...)` | `dir(main.py) / path` | `project dir / path` | `_MEIPASS / path` |
+
+*Project dir* is the nearest directory with a `pyproject.toml` at or above the
+working directory (see below).
 
 In dev the anchor is the entry script's directory (not the current working
 directory), so launching `python d:/apps/game/main.py` from anywhere — an IDE,
