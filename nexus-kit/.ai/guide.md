@@ -1,4 +1,4 @@
-<!-- when: bootstrapping an app, wiring DI, defining typed config, adding a service to the lifecycle, logging, or resolving PyInstaller-safe paths -->
+<!-- when: bootstrapping an app, running background work (loops, jobs), wiring DI, defining typed config, adding a service to the lifecycle, logging, or resolving PyInstaller-safe paths -->
 # nexus-kit — AI Agent Guide
 
 Context for AI assistants working in projects built with nexus-kit
@@ -12,6 +12,7 @@ nexus-kit is a minimal Python application framework. It provides:
 - Interfaces (abstract contracts) for bootstrapping an application
 - `ContainerInjector` — a concrete DI container implementation (thin wrapper over the `injector` library)
 - `ServiceInterface` / `ServiceRunner` — lifecycle: ordered start, guaranteed reverse-order stop of long-lived services (sync and async)
+- `BackgroundService` — base class for async services whose work runs in background tasks (loops, on-demand jobs); owns start/stop
 - `Root` — a path utility that works in dev and PyInstaller-bundled environments
   (and under pytest: an entry point installed in `.venv` is ignored, the anchor
   falls back to the project directory holding `pyproject.toml`)
@@ -181,6 +182,46 @@ and teardown continues; async stops are bounded by `stop_grace` (10s default), s
 stops run inline unbounded. The runner installs no signal handlers — exit is triggered
 by uvicorn, Qt `aboutToQuit`, or your own code.
 
+### Background work: `BackgroundService`
+
+Any service whose work goes on after `start()` returns — a sync loop, a periodic
+rebuild, a job launched from an HTTP handler — subclasses `BackgroundService`
+(`from nexus_kit.impl import BackgroundService`) and lists it in `SERVICES` like
+any other. Write the work, never the lifecycle:
+
+```python
+@singleton
+class CallHistorySync(BackgroundService):
+    @inject
+    def __init__(self, client: ClientInterface) -> None:
+        self._client = client               # super().__init__() is not required
+
+    async def on_start(self) -> None: ...   # optional setup, before run()
+    async def run(self) -> None:            # optional main loop, started by start()
+        while True:
+            await asyncio.sleep(await self.sync_now())
+    async def on_stop(self) -> None: ...    # optional teardown, after every task stopped
+
+@singleton
+class GenerationRunner(BackgroundService):  # no run(): work on demand
+    def launch(self, settings) -> None:
+        self.spawn(self._generate(settings), name="generation")
+```
+
+- Do NOT define `start()`/`stop()` in a subclass — it is a `TypeError` at class
+  creation. Setup goes into `on_start()`, teardown into `on_stop()`.
+- Do NOT call `asyncio.create_task` in a service — use `self.spawn(coro)`. Spawned
+  tasks are owned: `stop()` cancels and awaits them; a raw task outlives the service.
+- `stop()` honours the caller's cancellation (ServiceRunner's `stop_grace`), still
+  runs `on_stop()`. A crashing task is logged with its traceback on the
+  "nexus.services" logger; the service and its other tasks keep running.
+- The work shares the event loop with the HTTP server: CPU-heavy or blocking calls
+  (SQLite, pandas, openpyxl, model building) go through `await asyncio.to_thread(...)`,
+  or every request waits for them. A thread cannot be cancelled: `stop()` returns,
+  but the process exit waits for the thread to finish.
+- Async only: a sync app (`with ServiceRunner(...)`) rejects it; use a thread-owning
+  `ServiceInterface` there.
+
 ## Bridging into host frameworks (the satellite pattern)
 
 The typed lookup `ContainerInterface.get(cls: type[T]) -> T` is the core's
@@ -199,7 +240,8 @@ request/short-lived ones stay native to the host.
 
 - No signal handling — `ServiceRunner` never grabs SIGINT/SIGTERM; wire the exit
   trigger yourself (uvicorn's handlers, Qt `aboutToQuit`, own handler).
-- No background-service / worker base class, no scheduling.
+- No scheduling (cron-like timetables) and no job queue — `BackgroundService` runs
+  loops and on-demand tasks inside the process, nothing more.
 - No repository / persistence / DB layer.
 - No testing helpers or fixtures.
 - No HTTP/server/routing, retries, or middleware.

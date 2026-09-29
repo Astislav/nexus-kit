@@ -3,6 +3,18 @@
 All notable changes to nexus-kit. Versioning: [semver](https://semver.org/) —
 in 0.x, breaking changes bump the minor version.
 
+## [0.5.4] — 2026-09-29
+
+- **`BackgroundService`** (`nexus_kit.impl`) — base class for async services whose
+  work runs in background tasks: an optional `run()` loop started by `start()`, and
+  `spawn(coro)` for on-demand tasks the service owns. The class owns `start()` and
+  `stop()` — a subclass defining either is a `TypeError` at class creation; setup and
+  teardown go into optional `on_start()` / `on_stop()`. `stop()` cancels and awaits
+  every owned task and honours a cancellation of its caller (ServiceRunner's
+  `stop_grace`) instead of swallowing it — the bug hand-written stops kept repeating.
+  A crashing task is logged with its traceback, the others keep running. Works in
+  subclasses that skip `super().__init__()`. Additive: nothing existing changes.
+
 ## [0.5.3] — 2026-09-29
 
 - **`Root` works under pytest.** In dev `Root` anchors to the entry script's

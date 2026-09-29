@@ -368,6 +368,41 @@ Guarantees:
 The runner installs **no signal handlers** — who triggers the exit is your
 app's business (uvicorn's own handlers, Qt's `aboutToQuit`, or your own).
 
+### Background work
+
+A service whose work goes on after `start()` — a sync loop, a periodic rebuild,
+a job launched from an HTTP handler — subclasses `BackgroundService`. You write
+the work; the class owns `start()` and `stop()`, so the task bookkeeping every
+hand-written version gets subtly wrong is not yours to write:
+
+```python
+from nexus_kit.impl import BackgroundService
+
+@singleton
+class HistorySync(BackgroundService):
+    async def run(self) -> None:              # started by start(), cancelled by stop()
+        while True:
+            await self.sync_once()
+            await asyncio.sleep(3600)
+
+@singleton
+class ReportJobs(BackgroundService):          # no run(): tasks on demand
+    def launch(self, request) -> None:
+        self.spawn(self._build(request), name="report")
+```
+
+- `start()` runs the optional `on_start()`, launches `run()` and returns at once.
+- `spawn(coro)` adds a task the service owns — only while it runs.
+- `stop()` cancels and awaits every owned task, then runs the optional
+  `on_stop()`. Idempotent; a cancellation of the caller (the runner's
+  `stop_grace`) is honoured, not swallowed.
+- A task that crashes is logged with its traceback; the rest keep running.
+- Defining `start()` or `stop()` in a subclass is a `TypeError` at class
+  creation — there is no way to half-implement the lifecycle.
+
+It shares the event loop with everything else: blocking or CPU-heavy calls go
+through `await asyncio.to_thread(...)`, or your HTTP endpoints wait for them.
+
 ## Add a service
 
 **1. Define an interface (a swappable seam):**
@@ -435,6 +470,7 @@ is a one-line change in `DI_CONFIG` — nothing else moves.
 | `Root` | `nexus_kit` | Path util for dev and PyInstaller-bundled environments |
 | `ContainerInjector` | `nexus_kit.impl` | `ContainerInterface` impl via [injector](https://injector.readthedocs.io/) |
 | `ServiceRunner` | `nexus_kit.impl` | Ordered start / guaranteed reverse-order stop (`with` / `async with`) |
+| `BackgroundService` | `nexus_kit.impl` | Async service base: `run()` loop and `spawn()`ed tasks, owned and stopped correctly |
 | `NamedLogger` | `nexus_kit.logging` | Base for typed, DI-injectable logger channels |
 | `StdoutHandler` | `nexus_kit.logging` | Shared console handler — *where* logs go |
 | `LogFormatter` | `nexus_kit.logging` | Default log line format — *how* logs look; subclass to customize |
