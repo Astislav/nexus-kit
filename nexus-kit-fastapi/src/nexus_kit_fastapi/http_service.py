@@ -39,6 +39,24 @@ from nexus_kit.interfaces import ContainerInterface, ServiceInterface
 from nexus_kit_fastapi.inject import attach_container
 
 
+def _check_root_path(root_path: str, service: str) -> None:
+    """A mount prefix is "" or "/segment[/segment...]" — nothing else routes right.
+
+    A missing leading slash glues the prefix onto every generated path
+    (`apps/xping`); a trailing one doubles it (`/apps/x//ping`); "/" alone is
+    "no prefix" spelled wrong. All three break links only once deployed, so
+    they are refused at start, where the config error is still obvious.
+    """
+    if root_path == "" or (root_path.startswith("/") and not root_path.endswith("/")):
+        return
+    hint = root_path.strip("/")
+    suggestion = f"'/{hint}'" if hint else "'' (no prefix)"
+    raise ValueError(
+        f"{service}: root_path must be empty or start with '/' and not end with one — "
+        f"got {root_path!r}, did you mean {suggestion}?"
+    )
+
+
 class _QuietServer(uvicorn.Server):
     """uvicorn.Server with its signal handling disabled.
 
@@ -97,7 +115,10 @@ class HttpService(ServiceInterface):
       It is the ASGI `root_path`: routing stays prefix-free, while
       `request.url_for(...)`, redirects built from it, and the OpenAPI/docs
       pages generate prefixed URLs. Feed it from your Environment like host
-      and port; the default (empty) is "served at the root".
+      and port; the default (empty) is "served at the root". A malformed
+      prefix (`apps/x`, `/apps/x/`, `/`) fails start() with a ValueError —
+      checked on the uvicorn Config, so an overridden `uvicorn_config` is
+      covered too.
     - Override `uvicorn_config(app)` for TLS/proxy headers, or to wrap the
       app in ASGI middleware (e.g. `socketio.ASGIApp`) before serving.
     """
@@ -135,6 +156,7 @@ class HttpService(ServiceInterface):
         app = self.create_app()
         attach_container(app, self._container)
         config = self.uvicorn_config(app)
+        _check_root_path(config.root_path, type(self).__name__)
         self._server = _QuietServer(config)
         # Bind the socket ourselves, synchronously: a busy port surfaces right
         # here as a plain OSError — NOT uvicorn's in-task sys.exit(3), which

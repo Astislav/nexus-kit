@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.1] — 2026-09-29
+
+- **A malformed `root_path` fails `start()`** with a `ValueError` that names the
+  fix. `apps/x` (no leading slash), `/apps/x/` (trailing slash) and a bare `/`
+  used to start fine and break every generated link only once deployed. The
+  check reads the uvicorn `Config`, so apps that override `uvicorn_config` and
+  pass `root_path` themselves are covered too; nothing is bound when it fails.
+- Docs name the conventional setting `URL_PREFIX` (what apps settled on) instead
+  of `HTTP_ROOT_PATH`. The setting's name is still yours; `root_path` is unchanged.
+
 ## [0.4.0] — 2026-09-14
 
 - **`HttpService.root_path`** — the ASGI mount prefix for apps published under a

@@ -64,10 +64,11 @@ the prefix (Traefik `stripPrefix`, nginx `location /apps/x/ { proxy_pass
 http://app/; }`), the app receives `/ping` for `/apps/x/ping`. The ASGI
 answer is `root_path`: routing stays prefix-free, URL generation adds it.
 
-- Set `self.root_path = env.HTTP_ROOT_PATH` next to host/port. It is deploy
+- Set `self.root_path = env.URL_PREFIX` next to host/port. It is deploy
   config (like the port): the field defaults to `""`, the deployment sets
-  the environment variable. Do NOT hardcode the prefix in code, templates,
-  or `.env.example`.
+  the environment variable. Do NOT hardcode the prefix in code or templates.
+  The form is `/apps/x` — leading slash, no trailing one; anything else
+  fails `start()` with a ValueError, so do not re-validate it in the app.
 - Everything Starlette generates already honours it: `request.url_for(...)`,
   `RedirectResponse(request.url_for(...))`, `/docs`, `/openapi.json`
   (`servers: [{url: root_path}]`). Nothing to do there.

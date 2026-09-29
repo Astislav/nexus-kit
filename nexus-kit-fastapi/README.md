@@ -65,12 +65,14 @@ Published as `https://host/apps/x/` with the proxy stripping the prefix
 ASGI `root_path`, and the bridge exposes it next to host and port:
 
 ```python
-self.host, self.port, self.root_path = env.HOST, env.PORT, env.HTTP_ROOT_PATH
+self.host, self.port, self.root_path = env.HOST, env.PORT, env.URL_PREFIX
 ```
 
-`HTTP_ROOT_PATH` defaults to `""` in your Environment and is set by the
+`URL_PREFIX` defaults to `""` in your Environment and is set by the
 deployment (compose `environment:`, systemd, k8s) — the same class of config
-as the port, so it never lands in code, templates, or `.env.example`. Routing
+as the port, so it never lands in code or templates. Its form is `/apps/x`:
+a missing leading slash, a trailing one, or a bare `/` fails `start()` with a
+`ValueError` naming the fix, instead of breaking links after deploy. Routing
 stays prefix-free; `request.url_for(...)`, redirects built from it, `/docs`
 and `/openapi.json` generate prefixed URLs on their own. Only absolute paths
 you write as strings (`href="/x"`, `fetch("/api/x")`, `RedirectResponse("/")`)
@@ -84,7 +86,7 @@ labels:
   - traefik.http.middlewares.x-strip.stripprefix.prefixes=/apps/x
 environment:
   - HTTP_HOST=0.0.0.0
-  - HTTP_ROOT_PATH=/apps/x
+  - URL_PREFIX=/apps/x
 ```
 
 ## Routes reach the container through plain `Depends`

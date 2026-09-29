@@ -3,6 +3,7 @@ import socket
 
 import httpx
 import pytest
+import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 from injector import singleton
@@ -98,6 +99,58 @@ def test_root_path_prefixes_generated_urls_but_not_routing():
             assert openapi.json()["servers"] == [{"url": "/apps/probe"}]
         finally:
             await service.stop()
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("bad", ["apps/probe", "/apps/probe/", "/"])
+def test_malformed_root_path_fails_start_before_binding(bad):
+    """A malformed prefix breaks every link only once deployed — refuse it at
+    start, leaving nothing bound, so the corrected service starts cleanly."""
+
+    @singleton
+    class Misprefixed(HttpService):
+        port = 0
+        log_level = "warning"
+
+        def create_app(self) -> FastAPI:
+            return FastAPI()
+
+    async def scenario():
+        container = ContainerInjector({})
+        service = container.get(Misprefixed)
+        service.root_path = bad
+        with pytest.raises(ValueError, match="root_path"):
+            await service.start()
+        with pytest.raises(RuntimeError):
+            _ = service.bound_port  # nothing was bound
+
+        service.root_path = "/apps/probe"  # the fix; the same instance now starts
+        await service.start()
+        await service.stop()
+
+    asyncio.run(scenario())
+
+
+def test_root_path_is_checked_on_an_overridden_uvicorn_config():
+    """Apps override uvicorn_config (TLS, logging) and pass root_path themselves;
+    the check reads the Config, not the attribute, so it cannot be bypassed."""
+
+    @singleton
+    class OwnConfig(HttpService):
+        port = 0
+        log_level = "warning"
+
+        def create_app(self) -> FastAPI:
+            return FastAPI()
+
+        def uvicorn_config(self, app: FastAPI) -> uvicorn.Config:
+            return uvicorn.Config(app, host=self.host, port=self.port, root_path="/apps/x/", log_level="warning")
+
+    async def scenario():
+        service = ContainerInjector({}).get(OwnConfig)
+        with pytest.raises(ValueError, match="did you mean '/apps/x'"):
+            await service.start()
 
     asyncio.run(scenario())
 
