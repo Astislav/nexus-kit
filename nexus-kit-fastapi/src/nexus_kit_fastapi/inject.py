@@ -47,14 +47,14 @@ def Injected[T](cls: type[T]) -> T:  # noqa: N802 — deliberately reads like Fa
 
     The return type is a deliberate lie (the value is a Depends marker) —
     the same lie FastAPI's own Depends idiom lives by: it makes
-    `sender: Sender = Injected(Sender)` type-check, so IDEs and mypy treat
-    the parameter as a real Sender. The precise typing mirrors
+    `greeter: Greeter = Injected(Greeter)` type-check, so IDEs and mypy treat
+    the parameter as a real Greeter. The precise typing mirrors
     ContainerInterface.get(cls: type[T]) -> T, which this marker adapts
     into FastAPI's dependency slot.
 
-        @router.post("/send")
-        async def send(text: str, sender: Sender = Injected(Sender)) -> None:
-            await sender.enqueue(text)
+        @router.get("/greet")
+        async def greet(name: str, greeter: Greeter = Injected(Greeter)) -> dict[str, str]:
+            return {"message": greeter.greet(name)}
     """
 
     # async on purpose: a sync dependency would be shipped to FastAPI's

@@ -26,7 +26,7 @@ from nexus_kit.interfaces import ContainerInterface
 from nexus_kit_fastapi import HttpService
 
 from app.config.environment import Environment
-from app.api import accounts, health
+from app.api import health, items
 
 @singleton
 class ApiService(HttpService):
@@ -36,16 +36,16 @@ class ApiService(HttpService):
         self.host, self.port = env.HOST, env.PORT
 
     def create_app(self) -> FastAPI:          # plain FastAPI — yours entirely
-        app = FastAPI(title="my gateway")
+        app = FastAPI(title="my api")
         app.include_router(health.router)
-        app.include_router(accounts.router)
+        app.include_router(items.router)
         return app
 ```
 
 ```python
 # app/application.py
 class Application(ApplicationInterface):
-    SERVICES = [Database, WebhookDispatcher, ApiService]   # http last up, first down
+    SERVICES = [Database, Cache, ApiService]   # http last up, first down
 
     async def _serve(self) -> None:
         async with ServiceRunner(self._container, self.SERVICES):
@@ -85,7 +85,7 @@ labels:
   - traefik.http.routers.x.middlewares=x-strip
   - traefik.http.middlewares.x-strip.stripprefix.prefixes=/apps/x
 environment:
-  - HTTP_HOST=0.0.0.0
+  - HOST=0.0.0.0
   - URL_PREFIX=/apps/x
 ```
 
@@ -97,14 +97,14 @@ the container — no per-service `get_x()` boilerplate:
 ```python
 from nexus_kit_fastapi import Injected
 
-@router.post("/send")
-async def send(text: str, sender: Sender = Injected(Sender)):
-    await sender.enqueue(text)
+@router.get("/greet")
+async def greet(name: str, greeter: Greeter = Injected(Greeter)) -> dict[str, str]:
+    return {"message": greeter.greet(name)}
 ```
 
 It composes with everything FastAPI: auth dependencies, sub-dependencies,
 `Annotated`, middleware. For tests, bind fakes into the container
-(`container.set(Sender, FakeSender())`) and drive the app with FastAPI's
+(`container.set(Greeter, FakeGreeter())`) and drive the app with FastAPI's
 `TestClient` — attach the container manually via `attach_container(app,
 container)`, no server needed.
 

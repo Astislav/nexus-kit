@@ -86,9 +86,9 @@ answer is `root_path`: routing stays prefix-free, URL generation adds it.
 ## Injected — routes reach the container
 
 ```python
-@router.post("/send")
-async def send(text: str, sender: Sender = Injected(Sender)) -> None:
-    await sender.enqueue(text)
+@router.get("/greet")
+async def greet(name: str, greeter: Greeter = Injected(Greeter)) -> dict[str, str]:
+    return {"message": greeter.greet(name)}
 ```
 
 `Injected(cls)` is an ordinary FastAPI dependency — it composes with auth
@@ -97,7 +97,7 @@ dependencies, `Annotated`, sub-dependencies. Do NOT write per-service
 `Injected` replaces.
 
 Tests without a server: `attach_container(app, container)` + FastAPI
-`TestClient`; override by binding fakes — `container.set(Sender, fake)`.
+`TestClient`; override by binding fakes — `container.set(Greeter, fake)`.
 
 ## What NOT to do
 

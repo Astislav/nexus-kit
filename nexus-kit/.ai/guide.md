@@ -165,7 +165,7 @@ in a `ServiceRunner` context:
 ```python
 from nexus_kit.impl import ServiceRunner
 
-SERVICES = [Database, WebhookDispatcher, HttpApiService]   # startup order
+SERVICES = [Database, Cache, HttpApiService]   # startup order
 
 # async app:
 async with ServiceRunner(self._container, SERVICES):
@@ -184,28 +184,29 @@ by uvicorn, Qt `aboutToQuit`, or your own code.
 
 ### Background work: `BackgroundService`
 
-Any service whose work goes on after `start()` returns — a sync loop, a periodic
-rebuild, a job launched from an HTTP handler — subclasses `BackgroundService`
+Any service whose work goes on after `start()` returns — a polling loop, a periodic
+refresh, a job launched from an HTTP handler — subclasses `BackgroundService`
 (`from nexus_kit.impl import BackgroundService`) and lists it in `SERVICES` like
 any other. Write the work, never the lifecycle:
 
 ```python
 @singleton
-class CallHistorySync(BackgroundService):
+class Poller(BackgroundService):
     @inject
-    def __init__(self, client: ClientInterface) -> None:
-        self._client = client               # super().__init__() is not required
+    def __init__(self, source: SourceInterface) -> None:
+        self._source = source               # super().__init__() is not required
 
     async def on_start(self) -> None: ...   # optional setup, before run()
     async def run(self) -> None:            # optional main loop, started by start()
         while True:
-            await asyncio.sleep(await self.sync_now())
+            await self.poll_once()
+            await asyncio.sleep(60)
     async def on_stop(self) -> None: ...    # optional teardown, after every task stopped
 
 @singleton
-class GenerationRunner(BackgroundService):  # no run(): work on demand
-    def launch(self, settings) -> None:
-        self.spawn(self._generate(settings), name="generation")
+class Jobs(BackgroundService):              # no run(): work on demand
+    def launch(self, request) -> None:
+        self.spawn(self._work(request), name="job")
 ```
 
 - Do NOT define `start()`/`stop()` in a subclass — it is a `TypeError` at class
@@ -216,7 +217,7 @@ class GenerationRunner(BackgroundService):  # no run(): work on demand
   runs `on_stop()`. A crashing task is logged with its traceback on the
   "nexus.services" logger; the service and its other tasks keep running.
 - The work shares the event loop with the HTTP server: CPU-heavy or blocking calls
-  (SQLite, pandas, openpyxl, model building) go through `await asyncio.to_thread(...)`,
+  (SQLite, file parsing, number crunching) go through `await asyncio.to_thread(...)`,
   or every request waits for them. A thread cannot be cancelled: `stop()` returns,
   but the process exit waits for the thread to finish.
 - Async only: a sync app (`with ServiceRunner(...)`) rejects it; use a thread-owning

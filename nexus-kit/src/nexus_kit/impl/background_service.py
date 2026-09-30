@@ -15,15 +15,16 @@ class BackgroundService(ServiceInterface):
     Subclass and write the work, not the lifecycle:
 
         @singleton
-        class CallHistorySync(BackgroundService):
+        class Poller(BackgroundService):
             async def run(self) -> None:            # the main loop, started by start()
                 while True:
-                    await asyncio.sleep(await self.sync_now())
+                    await self.poll_once()
+                    await asyncio.sleep(60)
 
         @singleton
-        class GenerationRunner(BackgroundService):  # no run(): tasks on demand
-            def launch(self, settings) -> None:
-                self.spawn(self._generate(settings), name="generation")
+        class Jobs(BackgroundService):              # no run(): tasks on demand
+            def launch(self, request) -> None:
+                self.spawn(self._work(request), name="job")
 
     Contract:
     - `start()` and `stop()` belong to this class — a subclass defining either

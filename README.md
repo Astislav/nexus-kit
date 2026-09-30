@@ -218,7 +218,10 @@ publisher on PyPI and a row in the table above.
 **AI-guide discipline**: `.ai/guide.md` changes in the same commit as the
 public API it describes — a stale machine guide is worse than none, an
 agent will confidently build against a dead contract. Docs describe donor
-apps by class (a gateway, an analytics service), never by product name.
+apps by class (a gateway, an analytics service), never by product name — and
+examples use neutral names (`Greeter`, `Poller`, `Jobs`, `Storage`, `Cache`),
+never a donor's domain vocabulary: a reader should not be able to tell which
+app a feature was extracted from.
 
 **README split**: audience and philosophy text (why / who for / pythonic)
 lives ONLY in this root README; package READMEs are references and carry

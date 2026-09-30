@@ -14,19 +14,19 @@ class NamedLogger(logging.Logger):
     inject it by type annotation, no string-keyed lookups.
 
         @singleton
-        class SessionLogger(NamedLogger):
-            name = "app.session"
+        class StorageLogger(NamedLogger):
+            name = "app.storage"
 
-        class SessionManager:
+        class Storage:
             @inject
-            def __init__(self, log: SessionLogger): ...
+            def __init__(self, log: StorageLogger): ...
 
     To add another handler (e.g. a Qt signal sink for a log-view widget),
     override `__init__` and call `super().__init__(handler)` first:
 
         @singleton
-        class SessionLogger(NamedLogger):
-            name = "app.session"
+        class StorageLogger(NamedLogger):
+            name = "app.storage"
 
             @inject
             def __init__(self, handler: StdoutHandler, qt_handler: QtLogHandler):

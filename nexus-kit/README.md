@@ -250,27 +250,27 @@ from injector import singleton
 from nexus_kit.logging import NamedLogger
 
 @singleton
-class SessionLogger(NamedLogger):
-    name = "app.session"
+class StorageLogger(NamedLogger):
+    name = "app.storage"
 
 @singleton
-class SenderLogger(NamedLogger):
-    name = "app.sender"
+class NetworkLogger(NamedLogger):
+    name = "app.network"
 ```
 
 ```python
-# app/core/session_manager.py
+# app/core/storage.py
 from injector import inject, singleton
-from app.loggers import SessionLogger
+from app.loggers import StorageLogger
 
 @singleton
-class SessionManager:
+class Storage:
     @inject
-    def __init__(self, log: SessionLogger) -> None:
+    def __init__(self, log: StorageLogger) -> None:
         self._log = log
 
-    def start(self) -> None:
-        self._log.info("Session manager started")
+    def open(self) -> None:
+        self._log.info("Storage opened")
 ```
 
 Each subclass gets its own `StdoutHandler` (console, one shared instance)
@@ -301,8 +301,8 @@ and add the handler after calling `super().__init__(handler)`:
 
 ```python
 @singleton
-class SessionLogger(NamedLogger):
-    name = "app.session"
+class StorageLogger(NamedLogger):
+    name = "app.storage"
 
     @inject
     def __init__(self, handler: StdoutHandler, ui_handler: LogViewHandler) -> None:
@@ -332,7 +332,7 @@ class Database(ServiceInterface):
 from nexus_kit.impl import ServiceRunner
 
 class Application(ApplicationInterface):
-    SERVICES = [Database, WebhookDispatcher, HttpApiService]  # startup order
+    SERVICES = [Database, Cache, HttpApiService]  # startup order
 
     def run(self) -> None:
         asyncio.run(self._serve())
@@ -370,7 +370,7 @@ app's business (uvicorn's own handlers, Qt's `aboutToQuit`, or your own).
 
 ### Background work
 
-A service whose work goes on after `start()` — a sync loop, a periodic rebuild,
+A service whose work goes on after `start()` — a polling loop, a periodic refresh,
 a job launched from an HTTP handler — subclasses `BackgroundService`. You write
 the work; the class owns `start()` and `stop()`, so the task bookkeeping every
 hand-written version gets subtly wrong is not yours to write:
@@ -379,16 +379,16 @@ hand-written version gets subtly wrong is not yours to write:
 from nexus_kit.impl import BackgroundService
 
 @singleton
-class HistorySync(BackgroundService):
+class Poller(BackgroundService):
     async def run(self) -> None:              # started by start(), cancelled by stop()
         while True:
-            await self.sync_once()
-            await asyncio.sleep(3600)
+            await self.poll_once()
+            await asyncio.sleep(60)
 
 @singleton
-class ReportJobs(BackgroundService):          # no run(): tasks on demand
+class Jobs(BackgroundService):                # no run(): tasks on demand
     def launch(self, request) -> None:
-        self.spawn(self._build(request), name="report")
+        self.spawn(self._work(request), name="job")
 ```
 
 - `start()` runs the optional `on_start()`, launches `run()` and returns at once.
