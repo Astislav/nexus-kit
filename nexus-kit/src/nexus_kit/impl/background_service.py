@@ -73,22 +73,22 @@ class BackgroundService(ServiceInterface):
 
     def spawn(self, work: Coroutine[Any, Any, Any], *, name: str | None = None) -> asyncio.Task:
         """Run `work` as a task this service owns: stop() cancels and awaits it."""
-        if not self._state()["running"]:
+        if not self.__state()["running"]:
             work.close()  # never started: close it, or Python warns it was never awaited
             raise RuntimeError(f"{type(self).__name__}.spawn(): the service is not running")
         task = asyncio.create_task(work, name=name or f"{type(self).__name__}.task")
-        self._state()["tasks"].add(task)
-        task.add_done_callback(self._forget)
+        self.__state()["tasks"].add(task)
+        task.add_done_callback(self.__forget)
         return task
 
     @property
     def running(self) -> bool:
-        return self._state()["running"]
+        return self.__state()["running"]
 
     # --- the lifecycle (final) ---
 
     async def start(self) -> None:
-        state = self._state()
+        state = self.__state()
         if state["running"]:
             raise RuntimeError(f"{type(self).__name__} is already started — stop() it first")
         state["running"] = True
@@ -101,7 +101,7 @@ class BackgroundService(ServiceInterface):
             self.spawn(self.run(), name=f"{type(self).__name__}.run")
 
     async def stop(self) -> None:
-        state = self._state()
+        state = self.__state()
         state["running"] = False  # spawn() refuses from here on
         tasks = list(state["tasks"])
         for task in tasks:
@@ -116,18 +116,22 @@ class BackgroundService(ServiceInterface):
             await _maybe_await(self.on_stop())
 
     # --- internals ---
+    # Double-underscore names on purpose: Python mangles them to
+    # _BackgroundService__name, so a subclass field called `_state`, `_tasks`
+    # or `_forget` cannot shadow them. Subclasses are app code with their own
+    # vocabulary; nothing here may sit in the single-underscore namespace.
 
-    def _state(self) -> dict[str, Any]:
+    def __state(self) -> dict[str, Any]:
         # Lazy, not in __init__: subclasses have their own @inject __init__ and
         # must not be able to break the lifecycle by skipping super().__init__().
-        state = self.__dict__.get("_background_service_state")
+        state = self.__dict__.get("_BackgroundService__data")
         if state is None:
             state = {"running": False, "tasks": set()}
-            self.__dict__["_background_service_state"] = state
+            self.__dict__["_BackgroundService__data"] = state
         return state
 
-    def _forget(self, task: asyncio.Task) -> None:
-        self._state()["tasks"].discard(task)
+    def __forget(self, task: asyncio.Task) -> None:
+        self.__state()["tasks"].discard(task)
         if task.cancelled():
             return
         error = task.exception()

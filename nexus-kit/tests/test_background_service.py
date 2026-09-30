@@ -155,6 +155,49 @@ def test_a_subclass_that_skips_super_init_still_works():
     asyncio.run(scenario())
 
 
+def test_subclass_fields_cannot_shadow_the_internals():
+    """App services have their own vocabulary — `_state`, `_tasks`, `_task` are the
+    most natural field names there are. None of them may break the lifecycle."""
+
+    class Sync(BackgroundService):
+        def __init__(self) -> None:
+            self._state = "IDLE"
+            self._tasks = ["not", "ours"]
+            self._task = None
+            self._forget = "a field, not our callback"
+            self._log = None
+            self.ran = False
+
+        async def run(self) -> None:
+            self.ran = True
+            await asyncio.sleep(3600)
+
+    async def scenario():
+        service = Sync()
+        await service.start()
+        extra = service.spawn(asyncio.sleep(3600))
+        await _until(lambda: service.ran)
+        await service.stop()
+        assert extra.cancelled()
+        assert service._state == "IDLE" and service._tasks == ["not", "ours"]  # untouched
+
+    asyncio.run(scenario())
+
+
+def test_the_base_class_keeps_nothing_in_the_single_underscore_namespace():
+    """The guard behind the test above: whatever a subclass may name a field, the base
+    class must not already own it. Public API and name-mangled internals only."""
+    public = {"run", "on_start", "on_stop", "spawn", "running", "start", "stop"}
+    names = {
+        name for name in vars(BackgroundService)
+        if not (name.startswith("__") and name.endswith("__"))  # dunders
+        and not name.startswith("_BackgroundService__")          # mangled internals
+        and not name.startswith("_abc_")                         # ABC machinery
+    }
+
+    assert names == public
+
+
 def test_spawn_outside_the_running_window_raises_and_leaves_no_warning():
     class OnDemand(BackgroundService):
         pass

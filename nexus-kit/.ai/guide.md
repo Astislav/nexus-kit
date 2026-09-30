@@ -14,8 +14,8 @@ nexus-kit is a minimal Python application framework. It provides:
 - `ServiceInterface` / `ServiceRunner` — lifecycle: ordered start, guaranteed reverse-order stop of long-lived services (sync and async)
 - `BackgroundService` — base class for async services whose work runs in background tasks (loops, on-demand jobs); owns start/stop
 - `Root` — a path utility that works in dev and PyInstaller-bundled environments
-  (and under pytest: an entry point installed in `.venv` is ignored, the anchor
-  falls back to the project directory holding `pyproject.toml`)
+  (and in tests: under any pytest run — CLI or IDE runner — and under
+  `python -m unittest`, the anchor is the project directory holding `pyproject.toml`)
 - A logging base (`NamedLogger` / `StdoutHandler` / `LogFormatter`), DI-injectable
 - A scaffolding CLI: `nexus-kit new <app-name>`; packaging via `nexus-kit freeze`
   (generates `app.spec`: BUNDLED↔`Root.internal`) + `nexus-kit build` (clean
@@ -222,6 +222,11 @@ class Jobs(BackgroundService):              # no run(): work on demand
   but the process exit waits for the thread to finish.
 - Async only: a sync app (`with ServiceRunner(...)`) rejects it; use a thread-owning
   `ServiceInterface` there.
+- In tests, `spawn()` works only on a started service: `await service.start()` (or
+  run it under `ServiceRunner`) before calling methods that launch work, and
+  `await service.stop()` afterwards.
+- Subclass fields are free to use any name (`_state`, `_tasks`, `_task`): the base
+  class keeps its internals name-mangled and cannot be shadowed.
 
 ## Bridging into host frameworks (the satellite pattern)
 

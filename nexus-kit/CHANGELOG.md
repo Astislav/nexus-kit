@@ -3,6 +3,24 @@
 All notable changes to nexus-kit. Versioning: [semver](https://semver.org/) —
 in 0.x, breaking changes bump the minor version.
 
+## [0.5.5] — 2026-09-30
+
+Two defects found by the first real app upgrading to 0.5.3 / 0.5.4.
+
+- **`Root` under IDE test runners and `unittest`.** 0.5.3 recognised a test run by
+  *where the entry script lives* (inside the environment). PyCharm and VS Code launch
+  pytest through their own runner script in the IDE's directory, so `Root` anchored
+  there; `python -m unittest` anchored into the standard library. The test is now
+  *whether pytest is loaded in the process* — true for every way of starting it —
+  plus standard-library entry points. The project directory is resolved once per
+  process, so a test that `chdir`s no longer moves it.
+- **`BackgroundService` internals could be shadowed by a subclass.** The base class
+  kept its bookkeeping behind `_state()`; a service with its own `self._state` field
+  (as natural a name as there is) replaced it, and `spawn()` failed with
+  `'...' object is not callable`. Internals are now name-mangled — no
+  single-underscore name in the base class is left for a subclass to collide with,
+  and a test pins that.
+
 ## [0.5.4] — 2026-09-29
 
 - **`BackgroundService`** (`nexus_kit.impl`) — base class for async services whose

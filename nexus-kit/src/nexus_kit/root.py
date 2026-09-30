@@ -4,6 +4,10 @@ from pathlib import Path
 
 
 class Root:
+    # The fallback anchor, resolved once per process: the project does not move
+    # while the process runs, even if a test changes the working directory.
+    _project_base: Path | None = None
+
     @staticmethod
     def internal(*relative_parts: str) -> str:
         if hasattr(sys, "_MEIPASS"):
@@ -27,28 +31,42 @@ class Root:
         # scheduler, shortcut) must still find .env next to main.py —
         # matching the frozen build, which anchors to the exe.
         main_file = getattr(sys.modules.get("__main__"), "__file__", None)
-        if main_file:
+        if main_file and not Root._under_test_runner():
             entry = Path(main_file).resolve()
-            if not Root._is_installed_entry(entry):
+            if not Root._is_tool_entry(entry):
                 return entry.parent
-        # No entry script of the app's own: REPL, `python -c`, or a runner
-        # installed into the environment (pytest, a console script). Its
-        # directory is somewhere inside .venv, never the app — anchor to the
-        # project the process works in instead.
-        return Root._project_dir(Path.cwd())
+        # The entry script is not the app's own: a test run, a tool, REPL,
+        # `python -c`. Anchor to the project the process was started in.
+        if Root._project_base is None:
+            Root._project_base = Root._project_dir(Path.cwd())
+        return Root._project_base
 
     @staticmethod
-    def _is_installed_entry(entry: Path) -> bool:
-        """Entry script that belongs to the Python environment, not to an app.
+    def _under_test_runner() -> bool:
+        """pytest is driving this process — whoever launched it.
 
-        `python -m pytest` runs site-packages/pytest/__main__.py; `pytest` and any
-        other console script run from the environment's scripts directory. An
-        app's own main.py lives in neither.
+        Asked of the loaded modules, not of the entry script's location: `pytest`,
+        `python -m pytest`, PyCharm's and VS Code's own runner scripts (which live
+        in the IDE's directory, outside any environment) all import pytest before
+        the first test module loads. An app never does.
+        """
+        return "pytest" in sys.modules or "_pytest" in sys.modules
+
+    @staticmethod
+    def _is_tool_entry(entry: Path) -> bool:
+        """Entry script that belongs to Python or its environment, not to an app.
+
+        A console script runs from the environment's scripts directory, `python -m
+        <installed tool>` from site-packages, `python -m unittest` (or pdb, timeit)
+        from the standard library. An app's own main.py lives in none of them.
         """
         if {"site-packages", "dist-packages"} & {part.lower() for part in entry.parts}:
             return True
-        scripts = sysconfig.get_path("scripts")
-        return bool(scripts) and entry.is_relative_to(Path(scripts).resolve())
+        for name in ("scripts", "stdlib", "platstdlib"):
+            location = sysconfig.get_path(name)
+            if location and entry.is_relative_to(Path(location).resolve()):
+                return True
+        return False
 
     @staticmethod
     def _project_dir(start: Path) -> Path:

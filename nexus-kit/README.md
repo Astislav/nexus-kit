@@ -169,8 +169,8 @@ db     = Root.external("data", "app.db")
 html   = Root.internal("templates", "report.html")
 ```
 
-| Method | Dev (plain Python) | Under pytest / installed console script | Bundled (PyInstaller) |
-|--------|--------------------|------------------------------------------|-----------------------|
+| Method | Dev (plain Python) | Under a test runner or a tool | Bundled (PyInstaller) |
+|--------|--------------------|-------------------------------|-----------------------|
 | `Root.external(...)` | `dir(main.py) / path` | `project dir / path` | `dir(executable) / path` |
 | `Root.internal(...)` | `dir(main.py) / path` | `project dir / path` | `_MEIPASS / path` |
 
@@ -181,12 +181,19 @@ In dev the anchor is the entry script's directory (not the current working
 directory), so launching `python d:/apps/game/main.py` from anywhere — an IDE,
 a task scheduler, a shortcut — resolves the same paths as running it in place.
 
-When the entry script is not the app's own — `pytest`, `python -m pytest`, or
-any other console script installed into the environment — its directory is
-somewhere inside `.venv`, so it is ignored: the anchor becomes the nearest
-directory with a `pyproject.toml` at or above the working directory (the same
-directory without one). Your tests see exactly the paths `python main.py` sees
-from the project root — no `Path(__file__).parents[N]` workarounds needed.
+When the entry script is not the app's own, its directory says nothing about
+your app, so it is ignored and the anchor becomes the *project dir*. That covers:
+
+- **any pytest run** — `pytest`, `python -m pytest`, and the IDE runners
+  (PyCharm, VS Code), whose launcher scripts live in the IDE's own directory.
+  Detected by pytest being loaded in the process, not by where the launcher sits;
+- **`python -m unittest`** and other standard-library entry points;
+- **console scripts and tools installed into the environment.**
+
+The project dir is resolved once per process, from the directory the process was
+started in — a test that later `chdir`s into a temp directory does not move it.
+Your tests see exactly the paths `python main.py` sees from the project root — no
+`Path(__file__).parents[N]` workarounds needed.
 
 Use `external` for anything the user owns (configs, databases, output files).
 Use `internal` for assets you ship inside the bundle (templates, images, default configs).
